@@ -14,8 +14,8 @@ void callSQRT() {
     matlab::data::ArrayFactory factory;
 
     // Define a four-element typed array
-    matlab::data::TypedArray<double> const argArray = 
-        factory.createArray({ 1,4 }, { -2.0, 2.0, 6.0, 8.0 });
+    matlab::data::Array <double> const argArray = 
+        factory.createArray({ 1,4 }, { 2.0, 2.0, 6.0, 8.0 });
 
     // Call MATLAB sqrt function on the data array
     matlab::data::Array const results = matlabPtr->feval(u"sqrt", argArray);
