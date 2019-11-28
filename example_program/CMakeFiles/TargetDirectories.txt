@@ -1,3 +1,0 @@
-/home/justin/HE/ESN-HE/example_program/CMakeFiles/rebuild_cache.dir
-/home/justin/HE/ESN-HE/example_program/CMakeFiles/helib_example.dir
-/home/justin/HE/ESN-HE/example_program/CMakeFiles/edit_cache.dir

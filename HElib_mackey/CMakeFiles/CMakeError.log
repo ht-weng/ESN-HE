@@ -1,0 +1,63 @@
+Performing C++ SOURCE FILE Test CMAKE_HAVE_LIBC_PTHREAD failed with the following output:
+Change Dir: /home/justin/HE/ESN-HE/HElib_mackey/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_ff35c/fast && /usr/bin/make -f CMakeFiles/cmTC_ff35c.dir/build.make CMakeFiles/cmTC_ff35c.dir/build
+make[1]: Entering directory '/home/justin/HE/ESN-HE/HElib_mackey/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_ff35c.dir/src.cxx.o
+/usr/bin/c++    -DCMAKE_HAVE_LIBC_PTHREAD   -o CMakeFiles/cmTC_ff35c.dir/src.cxx.o -c /home/justin/HE/ESN-HE/HElib_mackey/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_ff35c
+/usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ff35c.dir/link.txt --verbose=1
+/usr/bin/c++   -DCMAKE_HAVE_LIBC_PTHREAD    CMakeFiles/cmTC_ff35c.dir/src.cxx.o  -o cmTC_ff35c 
+CMakeFiles/cmTC_ff35c.dir/src.cxx.o: In function `main':
+src.cxx:(.text+0x3e): undefined reference to `pthread_create'
+src.cxx:(.text+0x4a): undefined reference to `pthread_detach'
+src.cxx:(.text+0x5b): undefined reference to `pthread_join'
+src.cxx:(.text+0x6f): undefined reference to `pthread_atfork'
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_ff35c.dir/build.make:86: recipe for target 'cmTC_ff35c' failed
+make[1]: *** [cmTC_ff35c] Error 1
+make[1]: Leaving directory '/home/justin/HE/ESN-HE/HElib_mackey/CMakeFiles/CMakeTmp'
+Makefile:121: recipe for target 'cmTC_ff35c/fast' failed
+make: *** [cmTC_ff35c/fast] Error 2
+
+
+Source file was:
+#include <pthread.h>
+
+void* test_func(void* data)
+{
+  return data;
+}
+
+int main(void)
+{
+  pthread_t thread;
+  pthread_create(&thread, NULL, test_func, NULL);
+  pthread_detach(thread);
+  pthread_join(thread, NULL);
+  pthread_atfork(NULL, NULL, NULL);
+  pthread_exit(NULL);
+
+  return 0;
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /home/justin/HE/ESN-HE/HElib_mackey/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_2feb7/fast && /usr/bin/make -f CMakeFiles/cmTC_2feb7.dir/build.make CMakeFiles/cmTC_2feb7.dir/build
+make[1]: Entering directory '/home/justin/HE/ESN-HE/HElib_mackey/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_2feb7.dir/CheckFunctionExists.cxx.o
+/usr/bin/c++    -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_2feb7.dir/CheckFunctionExists.cxx.o -c /home/justin/HE/ESN-HE/HElib_mackey/CMakeFiles/CheckLibraryExists/CheckFunctionExists.cxx
+Linking CXX executable cmTC_2feb7
+/usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_2feb7.dir/link.txt --verbose=1
+/usr/bin/c++   -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTC_2feb7.dir/CheckFunctionExists.cxx.o  -o cmTC_2feb7  -lpthreads 
+/usr/bin/ld: cannot find -lpthreads
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_2feb7.dir/build.make:86: recipe for target 'cmTC_2feb7' failed
+make[1]: *** [cmTC_2feb7] Error 1
+make[1]: Leaving directory '/home/justin/HE/ESN-HE/HElib_mackey/CMakeFiles/CMakeTmp'
+Makefile:121: recipe for target 'cmTC_2feb7/fast' failed
+make: *** [cmTC_2feb7/fast] Error 2
+
+
+
