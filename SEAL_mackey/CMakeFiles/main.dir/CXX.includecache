@@ -35,6 +35,16 @@ algorithm
 -
 numeric
 -
+math.h
+-
+stdio.h
+-
+assert.h
+-
+sstream
+-
+stdlib.h
+-
 seal/seal.h
 /home/justin/HE/ESN-HE/SEAL_mackey/seal/seal.h
 
