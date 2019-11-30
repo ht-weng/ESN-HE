@@ -301,7 +301,7 @@ int main()
     // SEAL settings
     // Set up the CKKS scheme.
     EncryptionParameters parms(scheme_type::CKKS);
-    size_t poly_modulus_degree = 8192;
+    size_t poly_modulus_degree = 2;
     parms.set_poly_modulus_degree(poly_modulus_degree);
     parms.set_coeff_modulus(CoeffModulus::Create(
         poly_modulus_degree, { 60, 40, 40, 60 }));
@@ -361,18 +361,36 @@ int main()
         input.push_back(X[i]);
     }
     cout << "Input vector: " << endl;
-    // print_vector(input, sample_n, 7);
+    print_vector(input, 10, 7);
+    /*
     for(int i=0; i<sample_n; ++i) {
         std::cout << input[i] << ' ';
     }
+    */
     cout << endl;
-    
 
-    // Encode and encrypt
+    // Encode and encrypt input vector
     Plaintext x_plain;
     encoder.encode(input, scale, x_plain);
     Ciphertext x_encrypted;
     encryptor.encrypt(x_plain, x_encrypted);
+
+    /*
+    // Sum
+    Plaintext x_sum;
+    encoder.encode(0, scale, x_sum);
+    Ciphertext x_sum_encrypted;
+    encryptor.encrypt(x_sum, x_sum_encrypted);
+    for(int i=0; i<sample_n; ++i) {
+        evaluator.add_inplace(x_encrypted[i], x_sum_encrypted);
+    }
+
+    // Division to get average
+    Ciphertext x_average;
+    Plaintext div_by_thousand;
+    encoder.encode(0.001, scale, div_by_thousand);
+    evaluator.multiply_plain_inplace(x_sum_encrypted, div_by_thousand);
+    */
 
     // Decrypt, decode, and print the result
     Plaintext plain_result;
@@ -380,10 +398,12 @@ int main()
     vector<double> result;
     encoder.decode(plain_result, result);
     cout << "Result vector: " << endl;
-    // print_vector(result, sample_n, 7);
+    print_vector(result, 10, 7);
+    /*
     for(int i=0; i<sample_n; ++i) {
         std::cout << result[i] << ' ';
     }
+    */
     cout << endl;
     
     return 0;
