@@ -301,7 +301,7 @@ int main()
     // SEAL settings
     // Set up the CKKS scheme.
     EncryptionParameters parms(scheme_type::CKKS);
-    size_t poly_modulus_degree = 2;
+    size_t poly_modulus_degree = 8192;
     parms.set_poly_modulus_degree(poly_modulus_degree);
     parms.set_coeff_modulus(CoeffModulus::Create(
         poly_modulus_degree, { 60, 40, 40, 60 }));
@@ -347,64 +347,59 @@ int main()
 		X[i] = tanh(M[i*down_sample] - 1.0);
 	}
 	
-	// for (int i = 0; i < sample_n; i++) {
-    // 	cout << X[i] << ' ';
-	// }
-    //****************************************************************************
+    double X_sum;
+    double X_avg;
 
-    //****************************************************************************
-    // SEAL encryption and decryption
-    // Define input plain text
-    vector<double> input;
-    input.reserve(slot_count);
-    for (size_t i = 0; i < sample_n; i++) {
-        input.push_back(X[i]);
-    }
-    cout << "Input vector: " << endl;
-    print_vector(input, 10, 7);
-    /*
-    for(int i=0; i<sample_n; ++i) {
-        std::cout << input[i] << ' ';
-    }
-    */
+    cout << "Mackey glass data: " << endl;
+	for (int i = 0; i < sample_n; i++) {
+        X_sum = X_sum + X[i];
+    	cout << X[i] << ' ';
+	}
+    X_avg = X_sum/sample_n;
     cout << endl;
 
-    // Encode and encrypt input vector
-    Plaintext x_plain;
-    encoder.encode(input, scale, x_plain);
-    Ciphertext x_encrypted;
-    encryptor.encrypt(x_plain, x_encrypted);
-
-    /*
-    // Sum
+    //****************************************************************************
+    // SEAL
+    //****************************************************************************
+    
+    // Initialise the sum variable
     Plaintext x_sum;
     encoder.encode(0, scale, x_sum);
     Ciphertext x_sum_encrypted;
     encryptor.encrypt(x_sum, x_sum_encrypted);
-    for(int i=0; i<sample_n; ++i) {
-        evaluator.add_inplace(x_encrypted[i], x_sum_encrypted);
+
+    // Loop on all time series values
+    for (size_t i = 0; i < sample_n; i++) {
+        // Define input plain text
+        vector<double> input;
+        input.reserve(slot_count);
+        input.push_back(X[i]);
+
+        // Encode and encrypt input vector
+        Plaintext x_plain;
+        encoder.encode(input, scale, x_plain);
+        Ciphertext x_encrypted;
+        encryptor.encrypt(x_plain, x_encrypted);
+
+        // Sum
+        evaluator.add_inplace(x_sum_encrypted, x_encrypted);
     }
 
-    // Division to get average
-    Ciphertext x_average;
-    Plaintext div_by_thousand;
-    encoder.encode(0.001, scale, div_by_thousand);
-    evaluator.multiply_plain_inplace(x_sum_encrypted, div_by_thousand);
-    */
+    // Divide to get average
+    Plaintext denom;
+    encoder.encode(0.001, scale, denom);
+    evaluator.multiply_plain_inplace(x_sum_encrypted, denom);
 
     // Decrypt, decode, and print the result
     Plaintext plain_result;
-    decryptor.decrypt(x_encrypted, plain_result);
+    decryptor.decrypt(x_sum_encrypted, plain_result);
     vector<double> result;
     encoder.decode(plain_result, result);
+
     cout << "Result vector: " << endl;
-    print_vector(result, 10, 7);
-    /*
-    for(int i=0; i<sample_n; ++i) {
-        std::cout << result[i] << ' ';
-    }
-    */
+    print_vector(result, 5, 7);
     cout << endl;
-    
+    cout << "Correct average value: " << X_avg << endl;
+
     return 0;
 }
