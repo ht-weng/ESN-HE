@@ -347,9 +347,10 @@ int main()
 		X[i] = tanh(M[i*down_sample] - 1.0);
 	}
 	
+
     double X_sum;
     double X_avg;
-
+    // Calculate the average value of and print the mackey glass time series data
     cout << "Mackey glass data: " << endl;
 	for (int i = 0; i < sample_n; i++) {
         X_sum = X_sum + X[i];
