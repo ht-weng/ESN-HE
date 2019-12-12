@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/Users/justin/Desktop/HE/ESN-HE/SEAL_mackey/main.cpp
+/home/justin/HE/ESN-HE/SEAL_mackey/main.cpp
 cstddef
 -
 iostream
@@ -46,7 +46,7 @@ sstream
 stdlib.h
 -
 seal/seal.h
-/Users/justin/Desktop/HE/ESN-HE/SEAL_mackey/seal/seal.h
+/home/justin/HE/ESN-HE/SEAL_mackey/seal/seal.h
 
 /usr/local/include/SEAL-3.4/seal/batchencoder.h
 vector
