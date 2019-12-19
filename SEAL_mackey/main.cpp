@@ -328,83 +328,82 @@ int main()
 
     // //****************************************************************************
     // // Mackey glass settings
-    // int sample_all = 10000;	// total no. of samples, excluding the given initial condition
-	// assert (sample_all >= 2000); // if sample_n < 2000 then the time series is incorrect!!
-	// double M[sample_all];
-	// double T[sample_all];
-	// for (int i = 0; i < sample_all; ++i) M[i] = 0.0;
-	// for (int i = 0; i < sample_all; ++i) T[i] = 0.0;
+    int sample_all = 10000;	// total no. of samples, excluding the given initial condition
+	assert (sample_all >= 2000); // if sample_n < 2000 then the time series is incorrect!!
+	double M[sample_all];
+	double T[sample_all];
+	for (int i = 0; i < sample_all; ++i) M[i] = 0.0;
+	for (int i = 0; i < sample_all; ++i) T[i] = 0.0;
 
-    // // Generate mackey glass time series data
-	// mackey(M,T,sample_all);
+    // Generate mackey glass time series data
+	mackey(M,T,sample_all);
 
-	// // Downsample
-	// int down_sample = 10;
-	// int sample_n = sample_all / down_sample;
+	// Downsample
+	int down_sample = 10;
+	int sample_n = sample_all / down_sample;
 
-	// // Normalize mackey to -1 1 using hyperbolic tangent
-	// double X[sample_n];
-	// for (int i = 0; i < sample_n; i++) {
-	// 	X[i] = tanh(M[i*down_sample] - 1.0);
-	// }
+	// Normalize mackey to -1 1 using hyperbolic tangent
+	double X[sample_n];
+	for (int i = 0; i < sample_n; i++) {
+		X[i] = tanh(M[i*down_sample] - 1.0);
+	}
 	
 
-    // double X_sum;
-    // double X_avg;
-    // // Calculate the average value of and print the mackey glass time series data
-    // cout << "Mackey glass: " << endl;
-	// for (int i = 0; i < sample_n; i++) {
-    //     X_sum = X_sum + X[i];
-    // 	// cout << X[i] << ' ';
-	// }
-    // X_avg = X_sum/sample_n;
-    // cout << endl;
+    double X_sum;
+    double X_avg;
+    // Calculate the average value of and print the mackey glass time series data
+    cout << "Mackey glass: " << endl;
+	for (int i = 0; i < sample_n; i++) {
+        X_sum = X_sum + X[i];
+    	// cout << X[i] << ' ';
+	}
+    X_avg = X_sum/sample_n;
+    cout << endl;
 
     //****************************************************************************
     // SEAL Examples
     //****************************************************************************
     
     // //****************************************************************************
-    // // Average of mackey glass data
-    // // Initialise the sum variable
-    // Plaintext x_sum;
-    // encoder.encode(0, scale, x_sum);
-    // Ciphertext x_sum_encrypted;
-    // encryptor.encrypt(x_sum, x_sum_encrypted);
+    // Average of mackey glass data
+    // Initialise the sum variable
+    Plaintext x_sum;
+    encoder.encode(0, scale, x_sum);
+    Ciphertext x_sum_encrypted;
+    encryptor.encrypt(x_sum, x_sum_encrypted);
 
-    // // Loop on all time series values
-    // for (size_t i = 0; i < sample_n; i++) {
-    //     // Define input plain text
-    //     vector<double> input;
-    //     input.reserve(slot_count);
-    //     input.push_back(X[i]);
+    // Loop on all time series values
+    for (size_t i = 0; i < sample_n; i++) {
+        // Define input plain text
+        vector<double> input;
+        input.reserve(slot_count);
+        input.push_back(X[i]);
 
-    //     // Encode and encrypt input vector
-    //     Plaintext x_plain;
-    //     encoder.encode(input, scale, x_plain);
-    //     Ciphertext x_encrypted;
-    //     encryptor.encrypt(x_plain, x_encrypted);
+        // Encode and encrypt input vector
+        Plaintext x_plain;
+        encoder.encode(input, scale, x_plain);
+        Ciphertext x_encrypted;
+        encryptor.encrypt(x_plain, x_encrypted);
 
-    //     // Sum
-    //     evaluator.add_inplace(x_sum_encrypted, x_encrypted);
-    // }
+        // Sum
+        evaluator.add_inplace(x_sum_encrypted, x_encrypted);
+    }
 
-    // // Divide to get average
-    // Plaintext denom;
-    // encoder.encode(0.001, scale, denom);
-    // evaluator.multiply_plain_inplace(x_sum_encrypted, denom);
+    // Divide to get average
+    Plaintext denom;
+    encoder.encode(0.001, scale, denom);
+    evaluator.multiply_plain_inplace(x_sum_encrypted, denom);
 
-    // // Decrypt, decode, and print the result
-    // Plaintext plain_result;
-    // decryptor.decrypt(x_sum_encrypted, plain_result);
-    // vector<double> result;
-    // encoder.decode(plain_result, result);
-
-    // cout << "Result vector: " << endl;
-    // print_vector(result, 10, 7);
-    // cout << endl;
-    // cout << "Correct average value: " << X_avg << endl;
-    // cout << endl;
+    // Decrypt, decode, and print the result
+    Plaintext plain_result;
+    decryptor.decrypt(x_sum_encrypted, plain_result);
+    vector<double> result;
+    encoder.decode(plain_result, result);
+    cout << "Result vector: " << endl;
+    print_vector(result, 10, 7);
+    cout << endl;
+    cout << "Correct average value: " << X_avg << endl;
+    cout << endl;
     // //****************************************************************************
 
     //****************************************************************************
@@ -413,7 +412,7 @@ int main()
     vector<double> input;
     input.reserve(slot_count);
     // Set the input data
-    double input_data = 5.35;
+    double input_data = 0.35;
     input.push_back(input_data);
     cout << "Approximation of sigmoid function: " << endl;
     cout << "Input data: " << endl;
