@@ -228,191 +228,260 @@ inline void print_line(int line_number)
 //********************************************************************************
 // Functions for linear transformation
 //********************************************************************************
-inline vector<double> genUs(int d, int k)
-{
-    vector<double> result;
-    result.reserve(d*d);
-    for (int i = 0; i < d*d; i++) {
-        result.push_back(0);
-    }
+// inline vector<double> genUs(int d, int k)
+// {
+//     vector<double> result;
+//     result.reserve(d*d);
+//     for (int i = 0; i < d*d; i++) {
+//         result.push_back(0);
+//     }
 
-    for (int l = 0; l < d*d; l++){
-        if (k >= 0){
-            if ((l-d*k >= 0) && (l-d*k < d-k)){
-                result[l] = 1;
-            }
-        } else {
-            if ((l-(d+k)*d >= -k) && (l-(d+k)*d < d)){
-                result[l] = 1;
-            }
-        }   
-    }
-    return result;
-}
+//     for (int l = 0; l < d*d; l++){
+//         if (k >= 0){
+//             if ((l-d*k >= 0) && (l-d*k < d-k)){
+//                 result[l] = 1;
+//             }
+//         } else {
+//             if ((l-(d+k)*d >= -k) && (l-(d+k)*d < d)){
+//                 result[l] = 1;
+//             }
+//         }   
+//     }
+//     return result;
+// }
 
-inline vector<double> genUt(int d, int k)
-{
-    vector<double> result;
-    result.reserve(d*d);
-    for (int i = 0; i < d*d; i++) {
-        result.push_back(0);
-    }
-    for (int i = 0; i < d; i++){
-        for (int l = 0; l < d*d; l++){
-            if (l == k+d*i){
-                result[l] = 1;
-            }
-        }
-    }
-    return result;
-}
+// inline vector<double> genUt(int d, int k)
+// {
+//     vector<double> result;
+//     result.reserve(d*d);
+//     for (int i = 0; i < d*d; i++) {
+//         result.push_back(0);
+//     }
+//     for (int i = 0; i < d; i++){
+//         for (int l = 0; l < d*d; l++){
+//             if (l == k+d*i){
+//                 result[l] = 1;
+//             }
+//         }
+//     }
+//     return result;
+// }
 
-inline vector<double> genVk(int d, int k)
-{
-    vector<double> result;
-    result.reserve(d*d);
-    for (int i = 0; i < d*d; i++) {
-        result.push_back(0);
-    }
+// inline vector<double> genVk(int d, int k)
+// {
+//     vector<double> result;
+//     result.reserve(d*d);
+//     for (int i = 0; i < d*d; i++) {
+//         result.push_back(0);
+//     }
 
-    for (int l = 0; l < d*d; l++){
-        if ((l % d >= 0) && (l % d < d-k)){
-            result[l] = 1;
-        }
-    }
-    return result;
-}
+//     for (int l = 0; l < d*d; l++){
+//         if ((l % d >= 0) && (l % d < d-k)){
+//             result[l] = 1;
+//         }
+//     }
+//     return result;
+// }
 
-inline vector<double> genVkd(int d, int k)
-{
-    vector<double> result;
-    result.reserve(d*d);
-    for (int i = 0; i < d*d; i++) {
-        result.push_back(0);
-    }
+// inline vector<double> genVkd(int d, int k)
+// {
+//     vector<double> result;
+//     result.reserve(d*d);
+//     for (int i = 0; i < d*d; i++) {
+//         result.push_back(0);
+//     }
 
-    for (int l = 0; l < d*d; l++){
-        if ((l % d >= d-k) && (l % d < d)){
-            result[l] = 1;
-        }
-    }
-    return result;
-}
+//     for (int l = 0; l < d*d; l++){
+//         if ((l % d >= d-k) && (l % d < d)){
+//             result[l] = 1;
+//         }
+//     }
+//     return result;
+// }
 
-inline vector<double> linear_tran(vector<double> ct, int d, int U_type, int k_m)
-{
-    vector<double> result;
+// inline vector<double> linear_tran(vector<double> ct, int d, int U_type, int k_m)
+// {
+//     vector<double> result;
 
-    switch (U_type)
-    {
-        case 0:{
-            int i = 0;
-            vector<double> ct_ls [2*d-1];
-            ct_ls[i] = cmult(ct, genUs(d, 0));
-            i++;
-            for (int k = 1-d; k < 0; k++){
-                ct_ls[i] = add(ct_ls[i-1], cmult(rot(ct, k), genUs(d, k)));
-                i++;
-            }
-            for (int k = 1; k < d; k++){
-                ct_ls[i] = add(ct_ls[i-1], cmult(rot(ct, k), genUs(d, k)));
-                i++;
-            }
-            result = ct_ls[i-1];
-            break;
-        }
-        case 1:{
-            int i = 0;
-            vector<double> ct_ls [2*d-1];
-            ct_ls[i] = cmult(ct, genUt(d, 0));
-            i++;
-            for (int k = 1; k < d; k++){
-                ct_ls[i] = add(ct_ls[i-1], cmult(rot(ct, d*k), genUt(d, k)));
-                i++;
-            }
-            result = ct_ls[i-1];
-            break;
-        }
-        case 2:{
-            result = add(cmult(rot(ct, k_m), genVk(d, k_m)), cmult(rot(ct, k_m-d), genVkd(d, k_m)));
-            break;
-        }
-        case 3:{
-            result = rot(ct, d*k_m);
-            break;
-        }
-        default:{
-            cout << "Error: Wrong U_type value!" << endl;
-            break;
-        }
-    }
-    return result;
-}
+//     switch (U_type)
+//     {
+//         case 0:{
+//             int i = 0;
+//             vector<double> ct_ls [2*d-1];
+//             ct_ls[i] = cmult(ct, genUs(d, 0));
+//             i++;
+//             for (int k = 1-d; k < 0; k++){
+//                 ct_ls[i] = add(ct_ls[i-1], cmult(rot(ct, k), genUs(d, k)));
+//                 i++;
+//             }
+//             for (int k = 1; k < d; k++){
+//                 ct_ls[i] = add(ct_ls[i-1], cmult(rot(ct, k), genUs(d, k)));
+//                 i++;
+//             }
+//             result = ct_ls[i-1];
+//             break;
+//         }
+//         case 1:{
+//             int i = 0;
+//             vector<double> ct_ls [2*d-1];
+//             ct_ls[i] = cmult(ct, genUt(d, 0));
+//             i++;
+//             for (int k = 1; k < d; k++){
+//                 ct_ls[i] = add(ct_ls[i-1], cmult(rot(ct, d*k), genUt(d, k)));
+//                 i++;
+//             }
+//             result = ct_ls[i-1];
+//             break;
+//         }
+//         case 2:{
+//             result = add(cmult(rot(ct, k_m), genVk(d, k_m)), cmult(rot(ct, k_m-d), genVkd(d, k_m)));
+//             break;
+//         }
+//         case 3:{
+//             result = rot(ct, d*k_m);
+//             break;
+//         }
+//         default:{
+//             cout << "Error: Wrong U_type value!" << endl;
+//             break;
+//         }
+//     }
+//     return result;
+// }
+
+// //********************************************************************************
+// // Matrix multiplication functions
+// //********************************************************************************
+// inline vector<double> mat_mult(vector<double> ct_a, vector<double> ct_b, int d)
+// {
+//     vector<double> result;
+//     vector<double> ct_a0;
+//     vector<double> ct_b0;
+
+//     ct_a0 = linear_tran(ct_a, d, 0, 0);
+//     ct_b0 = linear_tran(ct_b, d, 1, 0);
+
+//     int i = 0;
+//     vector<double> ab_ls [d];
+//     ab_ls[i] = mult(ct_a0, ct_b0);
+//     i++;
+
+//     for (int k = 1; k < d; k++){
+//         vector<double> ct_ak;
+//         vector<double> ct_bk;
+
+//         ct_ak = linear_tran(ct_a0, d, 2, k);
+//         ct_bk = linear_tran(ct_b0, d, 3, k);
+
+//         ab_ls[i] = add(ab_ls[i-1], mult(ct_ak, ct_bk));
+//         i++;
+//     }
+//     result = ab_ls[i-1];
+//     return result;
+// }
+
+// inline vector<double> rmat_mult(vector<double> ct_a, vector<double> ct_b, int d, int l)
+// {
+//     vector<double> result;
+//     vector<double> ct_a0;
+//     vector<double> ct_b0;
+
+//     ct_a0 = linear_tran(ct_a, d, 0, 0);
+//     ct_b0 = linear_tran(ct_b, d, 1, 0);
+
+//     int i = 0;
+//     vector<double> ab_ls [d];
+//     ab_ls[i] = mult(ct_a0, ct_b0);
+//     i++;
+
+//     for (int k = 1; k < l; k++){
+//         vector<double> ct_ak;
+//         vector<double> ct_bk;
+
+//         ct_ak = linear_tran(ct_a0, d, 2, k);
+//         ct_bk = linear_tran(ct_b0, d, 3, k);
+
+//         ab_ls[i] = add(ab_ls[i-1], mult(ct_ak, ct_bk));
+//         i++;
+//     }
+//     vector<double> ab;
+//     ab = ab_ls[i-1];
+//     for (int k = 0; k < ceil(log2(d/l)); k++){
+//         ab_ls[i] = add(ab_ls[i-1], rot(ab, l*d*pow(2, k)));
+//         i++;
+//     }
+//     result = ab_ls[i-1];
+//     return result;
+// }
 
 //********************************************************************************
-// Matrix multiplication functions
+// Mackey glass helper functions
 //********************************************************************************
-inline vector<double> mat_mult(vector<double> ct_a, vector<double> ct_b, int d)
-{
-    vector<double> result;
-    vector<double> ct_a0;
-    vector<double> ct_b0;
+#define HARD_MACKEY_GLASS  	30
+#define SOFT_MACKEY_GLASS	17
 
-    ct_a0 = linear_tran(ct_a, d, 0, 0);
-    ct_b0 = linear_tran(ct_b, d, 1, 0);
+// Define difficulty of the problem
+#define MACKEY_GLASS_DIFFICULTY			SOFT_MACKEY_GLASS
 
-    int i = 0;
-    vector<double> ab_ls [d];
-    ab_ls[i] = mult(ct_a0, ct_b0);
-    i++;
-
-    for (int k = 1; k < d; k++){
-        vector<double> ct_ak;
-        vector<double> ct_bk;
-
-        ct_ak = linear_tran(ct_a0, d, 2, k);
-        ct_bk = linear_tran(ct_b0, d, 3, k);
-
-        ab_ls[i] = add(ab_ls[i-1], mult(ct_ak, ct_bk));
-        i++;
-    }
-    result = ab_ls[i-1];
-    return result;
+// Mackey glass equation
+double mackeyglass_eq(double x_t, double x_t_minus_tau, double a, double b) {
+	double x_dot = -b*x_t + a*x_t_minus_tau/(1 + pow(x_t_minus_tau,10));
+	return x_dot;
 }
 
-inline vector<double> rmat_mult(vector<double> ct_a, vector<double> ct_b, int d, int l)
-{
-    vector<double> result;
-    vector<double> ct_a0;
-    vector<double> ct_b0;
-
-    ct_a0 = linear_tran(ct_a, d, 0, 0);
-    ct_b0 = linear_tran(ct_b, d, 1, 0);
-
-    int i = 0;
-    vector<double> ab_ls [d];
-    ab_ls[i] = mult(ct_a0, ct_b0);
-    i++;
-
-    for (int k = 1; k < l; k++){
-        vector<double> ct_ak;
-        vector<double> ct_bk;
-
-        ct_ak = linear_tran(ct_a0, d, 2, k);
-        ct_bk = linear_tran(ct_b0, d, 3, k);
-
-        ab_ls[i] = add(ab_ls[i-1], mult(ct_ak, ct_bk));
-        i++;
-    }
-    vector<double> ab;
-    ab = ab_ls[i-1];
-    for (int k = 0; k < ceil(log2(d/l)); k++){
-        ab_ls[i] = add(ab_ls[i-1], rot(ab, l*d*pow(2, k)));
-        i++;
-    }
-    result = ab_ls[i-1];
-    return result;
+double mackeyglass_rk4(double x_t, double x_t_minus_tau, double deltat, double a, double b) {
+	double k1 = deltat*mackeyglass_eq(x_t,          x_t_minus_tau, a, b);
+	double k2 = deltat*mackeyglass_eq(x_t+0.5*k1,   x_t_minus_tau, a, b);
+	double k3 = deltat*mackeyglass_eq(x_t+0.5*k2,   x_t_minus_tau, a, b);
+	double k4 = deltat*mackeyglass_eq(x_t+k3,       x_t_minus_tau, a, b);
+	double x_t_plus_deltat = (x_t + k1/6 + k2/3 + k3/3 + k4/6);
+	return x_t_plus_deltat;
 }
+
+// Generate a Mackey-Glass time series
+void mackey(double *X, double *T, int sample_n) {
+	double a        = 0.2;     // value for a in eq (1)
+	double b        = 0.1;     // value for b in eq (1)
+	int tau      	= MACKEY_GLASS_DIFFICULTY;		// delay constant in eq (1)
+	double x0       = 1.2;		// initial condition: x(t=0)=x0
+	double deltat   = 0.1;	    // time step size (which coincides with the integration step)
+	int interval 	= 1;	    // output is printed at every 'interval' time steps
+
+	double time = 0;
+	int index = 1;
+	int history_length = floor(tau/deltat);
+	double x_history[history_length];
+	for (int i = 0; i < x_history[i]; ++i) x_history[i] = 0.0;
+	double x_t = x0;
+	double x_t_minus_tau, x_t_plus_deltat;
+
+	// Set every value to the default value
+	for (int i = 0; i < sample_n; i++) {
+		X[i] = x_t;
+
+//		if ((i % interval == 0) && (i > 0)) {
+//			printf("%f %f\n", T[i-1], X[i]);
+//		}
+
+		if (tau == 0)
+			x_t_minus_tau = 0.0;
+		else
+			x_t_minus_tau = x_history[index];
+
+
+		x_t_plus_deltat = mackeyglass_rk4(x_t, x_t_minus_tau, deltat, a, b);
+
+		if (tau != 0) {
+			x_history[index] = x_t_plus_deltat;
+			index = (index % history_length)+1;
+		}
+
+		time = time + deltat;
+		T[i] = time;
+		x_t = x_t_plus_deltat;
+	}
+}
+
 //********************************************************************************
 // Main function
 //********************************************************************************
@@ -423,7 +492,7 @@ int main()
     //////////////////////////////////////////////////////////////////////////////
     // Set up the CKKS scheme.
     EncryptionParameters parms(scheme_type::CKKS);
-    size_t poly_modulus_degree = 4096;
+    size_t poly_modulus_degree = 8192;
     parms.set_poly_modulus_degree(poly_modulus_degree);
 
     // TODO: Modify poly_modulus_degree, coeff_modulus and scale
@@ -448,11 +517,45 @@ int main()
     size_t slot_count = encoder.slot_count();
     cout << "Number of slots: " << slot_count << endl;
     cout << endl;
+
+
+    //////////////////////////////////////////////////////////////////////////////
+    // Mackey glass settings
+    //////////////////////////////////////////////////////////////////////////////
+    int sample_all = 10000;	// total no. of samples, excluding the given initial condition
+	assert (sample_all >= 2000); // if sample_n < 2000 then the time series is incorrect!!
+	double M[sample_all];
+	double T[sample_all];
+	for (int i = 0; i < sample_all; ++i) M[i] = 0.0;
+	for (int i = 0; i < sample_all; ++i) T[i] = 0.0;
+
+    // Generate mackey glass time series data
+	mackey(M,T,sample_all);
+
+	// Downsample
+	int down_sample = 10;
+	int sample_n = sample_all / down_sample;
+
+	// Normalize mackey to -1 1 using hyperbolic tangent
+	double X[sample_n];
+	for (int i = 0; i < sample_n; i++) {
+		X[i] = tanh(M[i*down_sample] - 1.0);
+	}
+	
+    double X_sum;
+    double X_avg;
+    // Calculate the average value of and print the mackey glass time series data
+    cout << "Mackey glass: " << endl;
+	for (int i = 0; i < sample_n; i++) {
+        X_sum = X_sum + X[i];
+    	// cout << X[i] << ' ';
+	}
+    X_avg = X_sum/sample_n;
+    cout << endl;
     
     //////////////////////////////////////////////////////////////////////////////
-    // SEAL Example
+    // SEAL Mackey Glass Averaging Example
     //////////////////////////////////////////////////////////////////////////////
-    // Average of mackey glass data
     // Initialise the sum variable
     Plaintext x_sum;
     encoder.encode(0, scale, x_sum);
