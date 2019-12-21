@@ -24,6 +24,7 @@ using namespace seal;
 
 //********************************************************************************
 // SEAL helper functions
+//********************************************************************************
 /*
 Helper function: Prints the name of the example in a fancy banner.
 */
@@ -223,14 +224,203 @@ inline void print_line(int line_number)
 {
     std::cout << "Line " << std::setw(3) << line_number << " --> ";
 }
-//********************************************************************************
 
 //********************************************************************************
-// main function for homomorphic encryption of mackey glass equation
+// Functions for linear transformation
+//********************************************************************************
+inline vector<double> genUs(int d, int k)
+{
+    vector<double> result;
+    result.reserve(d*d);
+    for (int i = 0; i < d*d; i++) {
+        result.push_back(0);
+    }
+
+    for (int l = 0; l < d*d; l++){
+        if (k >= 0){
+            if ((l-d*k >= 0) && (l-d*k < d-k)){
+                result[l] = 1;
+            }
+        } else {
+            if ((l-(d+k)*d >= -k) && (l-(d+k)*d < d)){
+                result[l] = 1;
+            }
+        }   
+    }
+    return result;
+}
+
+inline vector<double> genUt(int d, int k)
+{
+    vector<double> result;
+    result.reserve(d*d);
+    for (int i = 0; i < d*d; i++) {
+        result.push_back(0);
+    }
+    for (int i = 0; i < d; i++){
+        for (int l = 0; l < d*d; l++){
+            if (l == k+d*i){
+                result[l] = 1;
+            }
+        }
+    }
+    return result;
+}
+
+inline vector<double> genVk(int d, int k)
+{
+    vector<double> result;
+    result.reserve(d*d);
+    for (int i = 0; i < d*d; i++) {
+        result.push_back(0);
+    }
+
+    for (int l = 0; l < d*d; l++){
+        if ((l % d >= 0) && (l % d < d-k)){
+            result[l] = 1;
+        }
+    }
+    return result;
+}
+
+inline vector<double> genVkd(int d, int k)
+{
+    vector<double> result;
+    result.reserve(d*d);
+    for (int i = 0; i < d*d; i++) {
+        result.push_back(0);
+    }
+
+    for (int l = 0; l < d*d; l++){
+        if ((l % d >= d-k) && (l % d < d)){
+            result[l] = 1;
+        }
+    }
+    return result;
+}
+
+inline vector<double> linear_tran(vector<double> ct, int d, int U_type, int k_m)
+{
+    vector<double> result;
+
+    switch (U_type)
+    {
+        case 0:{
+            int i = 0;
+            vector<double> ct_ls [2*d-1];
+            ct_ls[i] = cmult(ct, genUs(d, 0));
+            i++;
+            for (int k = 1-d; k < 0; k++){
+                ct_ls[i] = add(ct_ls[i-1], cmult(rot(ct, k), genUs(d, k)));
+                i++;
+            }
+            for (int k = 1; k < d; k++){
+                ct_ls[i] = add(ct_ls[i-1], cmult(rot(ct, k), genUs(d, k)));
+                i++;
+            }
+            result = ct_ls[i-1];
+            break;
+        }
+        case 1:{
+            int i = 0;
+            vector<double> ct_ls [2*d-1];
+            ct_ls[i] = cmult(ct, genUt(d, 0));
+            i++;
+            for (int k = 1; k < d; k++){
+                ct_ls[i] = add(ct_ls[i-1], cmult(rot(ct, d*k), genUt(d, k)));
+                i++;
+            }
+            result = ct_ls[i-1];
+            break;
+        }
+        case 2:{
+            result = add(cmult(rot(ct, k_m), genVk(d, k_m)), cmult(rot(ct, k_m-d), genVkd(d, k_m)));
+            break;
+        }
+        case 3:{
+            result = rot(ct, d*k_m);
+            break;
+        }
+        default:{
+            cout << "Error: Wrong U_type value!" << endl;
+            break;
+        }
+    }
+    return result;
+}
+
+//********************************************************************************
+// Matrix multiplication functions
+//********************************************************************************
+inline vector<double> mat_mult(vector<double> ct_a, vector<double> ct_b, int d)
+{
+    vector<double> result;
+    vector<double> ct_a0;
+    vector<double> ct_b0;
+
+    ct_a0 = linear_tran(ct_a, d, 0, 0);
+    ct_b0 = linear_tran(ct_b, d, 1, 0);
+
+    int i = 0;
+    vector<double> ab_ls [d];
+    ab_ls[i] = mult(ct_a0, ct_b0);
+    i++;
+
+    for (int k = 1; k < d; k++){
+        vector<double> ct_ak;
+        vector<double> ct_bk;
+
+        ct_ak = linear_tran(ct_a0, d, 2, k);
+        ct_bk = linear_tran(ct_b0, d, 3, k);
+
+        ab_ls[i] = add(ab_ls[i-1], mult(ct_ak, ct_bk));
+        i++;
+    }
+    result = ab_ls[i-1];
+    return result;
+}
+
+inline vector<double> rmat_mult(vector<double> ct_a, vector<double> ct_b, int d, int l)
+{
+    vector<double> result;
+    vector<double> ct_a0;
+    vector<double> ct_b0;
+
+    ct_a0 = linear_tran(ct_a, d, 0, 0);
+    ct_b0 = linear_tran(ct_b, d, 1, 0);
+
+    int i = 0;
+    vector<double> ab_ls [d];
+    ab_ls[i] = mult(ct_a0, ct_b0);
+    i++;
+
+    for (int k = 1; k < l; k++){
+        vector<double> ct_ak;
+        vector<double> ct_bk;
+
+        ct_ak = linear_tran(ct_a0, d, 2, k);
+        ct_bk = linear_tran(ct_b0, d, 3, k);
+
+        ab_ls[i] = add(ab_ls[i-1], mult(ct_ak, ct_bk));
+        i++;
+    }
+    vector<double> ab;
+    ab = ab_ls[i-1];
+    for (int k = 0; k < ceil(log2(d/l)); k++){
+        ab_ls[i] = add(ab_ls[i-1], rot(ab, l*d*pow(2, k)));
+        i++;
+    }
+    result = ab_ls[i-1];
+    return result;
+}
+//********************************************************************************
+// Main function
+//********************************************************************************
 int main()
 {
-    //****************************************************************************
+    //////////////////////////////////////////////////////////////////////////////
     // SEAL settings
+    //////////////////////////////////////////////////////////////////////////////
     // Set up the CKKS scheme.
     EncryptionParameters parms(scheme_type::CKKS);
     size_t poly_modulus_degree = 4096;
@@ -258,10 +448,10 @@ int main()
     size_t slot_count = encoder.slot_count();
     cout << "Number of slots: " << slot_count << endl;
     cout << endl;
-    //****************************************************************************
     
-    //****************************************************************************
-    // SEAL Examples
+    //////////////////////////////////////////////////////////////////////////////
+    // SEAL Example
+    //////////////////////////////////////////////////////////////////////////////
     // Average of mackey glass data
     // Initialise the sum variable
     Plaintext x_sum;
@@ -301,11 +491,6 @@ int main()
     cout << endl;
     cout << "Correct average value: " << X_avg << endl;
     cout << endl;
-
-
-    
-    // //****************************************************************************
-
 
     return 0;
 }
