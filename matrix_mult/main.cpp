@@ -545,7 +545,7 @@ int main()
     double X_sum;
     double X_avg;
     // Calculate the average value of and print the mackey glass time series data
-    cout << "Mackey glass: " << endl;
+    // cout << "Mackey glass: " << endl;
 	for (int i = 0; i < sample_n; i++) {
         X_sum = X_sum + X[i];
     	// cout << X[i] << ' ';
@@ -557,43 +557,67 @@ int main()
     // SEAL Mackey Glass Averaging Example
     //////////////////////////////////////////////////////////////////////////////
     // Initialise the sum variable
-    Plaintext x_sum;
-    encoder.encode(0, scale, x_sum);
-    Ciphertext x_sum_encrypted;
-    encryptor.encrypt(x_sum, x_sum_encrypted);
+    // Plaintext x_sum;
+    // encoder.encode(0, scale, x_sum);
+    // Ciphertext x_sum_encrypted;
+    // encryptor.encrypt(x_sum, x_sum_encrypted);
 
-    // Loop on all time series values
-    for (size_t i = 0; i < sample_n; i++) {
-        // Define input plain text
-        vector<double> input;
-        input.reserve(slot_count);
-        input.push_back(X[i]);
+    // // Loop on all time series values
+    // for (size_t i = 0; i < sample_n; i++) {
+    //     // Define input plain text
+    //     vector<double> input;
+    //     input.reserve(slot_count);
+    //     input.push_back(X[i]);
 
-        // Encode and encrypt input vector
-        Plaintext x_plain;
-        encoder.encode(input, scale, x_plain);
-        Ciphertext x_encrypted;
-        encryptor.encrypt(x_plain, x_encrypted);
+    //     // Encode and encrypt input vector
+    //     Plaintext x_plain;
+    //     encoder.encode(input, scale, x_plain);
+    //     Ciphertext x_encrypted;
+    //     encryptor.encrypt(x_plain, x_encrypted);
 
-        // Sum
-        evaluator.add_inplace(x_sum_encrypted, x_encrypted);
+    //     // Sum
+    //     evaluator.add_inplace(x_sum_encrypted, x_encrypted);
+    // }
+
+    // // Divide to get average
+    // Plaintext denom;
+    // encoder.encode(0.001, scale, denom);
+    // evaluator.multiply_plain_inplace(x_sum_encrypted, denom);
+
+    // // Decrypt, decode, and print the result
+    // Plaintext plain_result;
+    // decryptor.decrypt(x_sum_encrypted, plain_result);
+    // vector<double> result;
+    // encoder.decode(plain_result, result);
+    // cout << "Result vector: " << endl;
+    // print_vector(result, 10, 7);
+    // cout << endl;
+    // cout << "Correct average value: " << X_avg << endl;
+    // cout << endl;
+
+    //////////////////////////////////////////////////////////////////////////////
+    // Matrix multiplication
+    //////////////////////////////////////////////////////////////////////////////
+    vector<double> input_a;
+    for (int i = 0; i < 4096; i++) {
+        input_a.push_back(i);
+    }
+    vector<double> input_b;
+    for (int i = 0; i < 4096; i++) {
+        input_b.push_back(4095-i);
     }
 
-    // Divide to get average
-    Plaintext denom;
-    encoder.encode(0.001, scale, denom);
-    evaluator.multiply_plain_inplace(x_sum_encrypted, denom);
+    Plaintext a_plain;
+    encoder.encode(input_a, scale, a_plain);
+    Ciphertext a_encrypted;
+    encryptor.encrypt(a_plain, a_encrypted);
 
-    // Decrypt, decode, and print the result
-    Plaintext plain_result;
-    decryptor.decrypt(x_sum_encrypted, plain_result);
-    vector<double> result;
-    encoder.decode(plain_result, result);
-    cout << "Result vector: " << endl;
-    print_vector(result, 10, 7);
-    cout << endl;
-    cout << "Correct average value: " << X_avg << endl;
-    cout << endl;
+    Plaintext plain_mult_result;
+    decryptor.decrypt(a_encrypted, plain_mult_result);
+    vector<double> mult_result;
+    encoder.decode(plain_mult_result, mult_result);
+    cout << "Matrix multiplication result: " << endl;
+    print_vector(mult_result, 4096, 10);
 
     return 0;
 }
