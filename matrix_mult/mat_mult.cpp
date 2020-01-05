@@ -190,7 +190,7 @@ inline vector<double> linear_tran(vector<double> ct, int d, int U_type, int k_m)
     {
         case 0:{
             int i = 0;
-            vector<double> ct_ls [2*d-1];
+            vector<double> ct_ls[2*d-1];
             ct_ls[i] = cmult(ct, genUs(d, 0));
             i++;
             for (int k = 1-d; k < 0; k++){
@@ -242,7 +242,7 @@ inline vector<double> mat_mult(vector<double> ct_a, vector<double> ct_b, int d)
     ct_b0 = linear_tran(ct_b, d, 1, 0);
 
     int i = 0;
-    vector<double> ab_ls [d];
+    vector<double> ab_ls[d];
     ab_ls[i] = mult(ct_a0, ct_b0);
     i++;
 
@@ -270,7 +270,7 @@ inline vector<double> rmat_mult(vector<double> ct_a, vector<double> ct_b, int d,
     ct_b0 = linear_tran(ct_b, d, 1, 0);
 
     int i = 0;
-    vector<double> ab_ls [d];
+    vector<double> ab_ls[d];
     ab_ls[i] = mult(ct_a0, ct_b0);
     i++;
 

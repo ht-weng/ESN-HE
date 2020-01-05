@@ -225,155 +225,264 @@ inline void print_line(int line_number)
     std::cout << "Line " << std::setw(3) << line_number << " --> ";
 }
 
-//********************************************************************************
+// ********************************************************************************
 // Functions for linear transformation
+// ********************************************************************************
+inline Plaintext genUs(int d, int k, double scale, CKKSEncoder &encoder)
+{
+    vector<double> result;
+    result.reserve(d*d);
+    for (int i = 0; i < d*d; i++) {
+        result.push_back(0);
+    }
+
+    for (int l = 0; l < d*d; l++){
+        if (k >= 0){
+            if ((l-d*k >= 0) && (l-d*k < d-k)){
+                result[l] = 1;
+            }
+        } else {
+            if ((l-(d+k)*d >= -k) && (l-(d+k)*d < d)){
+                result[l] = 1;
+            }
+        }
+    }
+    Plaintext result_plain;
+    encoder.encode(result, scale, result_plain);
+    return result_plain;
+}
+
+inline Plaintext genUt(int d, int k, double scale, CKKSEncoder &encoder)
+{
+    vector<double> result;
+    result.reserve(d*d);
+    for (int i = 0; i < d*d; i++) {
+        result.push_back(0);
+    }
+    for (int i = 0; i < d; i++){
+        for (int l = 0; l < d*d; l++){
+            if (l == k+d*i){
+                result[l] = 1;
+            }
+        }
+    }
+    Plaintext result_plain;
+    encoder.encode(result, scale, result_plain);
+    return result_plain;
+}
+
+inline Plaintext genVk(int d, int k, double scale, CKKSEncoder &encoder)
+{
+    vector<double> result;
+    result.reserve(d*d);
+    for (int i = 0; i < d*d; i++) {
+        result.push_back(0);
+    }
+
+    for (int l = 0; l < d*d; l++){
+        if ((l % d >= 0) && (l % d < d-k)){
+            result[l] = 1;
+        }
+    }
+    Plaintext result_plain;
+    encoder.encode(result, scale, result_plain);
+    return result_plain;
+}
+
+inline Plaintext genVkd(int d, int k, double scale, CKKSEncoder &encoder)
+{
+    vector<double> result;
+    result.reserve(d*d);
+    for (int i = 0; i < d*d; i++) {
+        result.push_back(0);
+    }
+
+    for (int l = 0; l < d*d; l++){
+        if ((l % d >= d-k) && (l % d < d)){
+            result[l] = 1;
+        }
+    }
+    Plaintext result_plain;
+    encoder.encode(result, scale, result_plain);
+    return result_plain;
+}
+
+inline Plaintext genOnes(int d, double scale, CKKSEncoder &encoder)
+{
+    vector<double> result;
+    result.reserve(d*d);
+    for (int i = 0; i < d*d; i++) {
+        result.push_back(1);
+    }
+
+    Plaintext result_plain;
+    encoder.encode(result, scale, result_plain);
+    return result_plain;
+}
+
+inline Ciphertext linear_tran(Ciphertext &ct, int d, int U_type, int k_m, double scale, 
+    CKKSEncoder &encoder, Evaluator &evaluator, const GaloisKeys &gal_keys, 
+    const parms_id_type& parms_id)
+{
+    Ciphertext result;
+    
+    switch (U_type)
+    {
+        case 0:{
+            int i = 0;
+            Ciphertext ct_ls[2*d-1];
+            Plaintext mat_Us;
+            ct_ls[i] = ct;
+            mat_Us = genUs(d, 0, scale, encoder);
+            evaluator.mod_switch_to_inplace(mat_Us, parms_id);
+
+            evaluator.multiply_plain_inplace(ct_ls[i], mat_Us);
+            // cout << "ct_ls[i]: " << ct_ls[i].parms_id() << endl;
+            evaluator.rescale_to_next_inplace(ct_ls[i]);
+            ct_ls[i].scale() = scale;
+            // evaluator.mod_switch_to_inplace(ct_ls[i], last_parms_id);
+            // cout << "ct_ls[i]: " << ct_ls[i].parms_id() << endl;
+            i++;
+            for (int k = 1-d; k < 0; k++){
+                Ciphertext temp_rot;
+                mat_Us = genUs(d, k, scale, encoder);
+                evaluator.mod_switch_to_inplace(mat_Us, parms_id);
+                
+                evaluator.rotate_vector(ct, k, gal_keys, temp_rot);
+                // cout << "ct: " << ct.parms_id() << endl;
+                // cout << "temp_rot: " << temp_rot.parms_id() << endl;
+                evaluator.multiply_plain_inplace(temp_rot, mat_Us);
+                // cout << "temp_rot: " << temp_rot.parms_id() << endl;
+                evaluator.rescale_to_next_inplace(temp_rot);
+                temp_rot.scale() = scale;
+                // evaluator.mod_switch_to_inplace(temp_rot, last_parms_id);
+                // cout << "ct_ls[i]: " << ct_ls[i].parms_id() << endl;
+                evaluator.add(ct_ls[i-1], temp_rot, ct_ls[i]);
+                // cout << "ct_ls[i]: " << ct_ls[i].parms_id() << endl;
+                i++;
+            }
+            for (int k = 1; k < d; k++){
+                Ciphertext temp_rot;
+                mat_Us = genUs(d, k, scale, encoder);
+                evaluator.mod_switch_to_inplace(mat_Us, parms_id);
+                // cout << "ct: " << ct.parms_id() << endl;
+                evaluator.rotate_vector(ct, k, gal_keys, temp_rot);
+                // cout << "ct: " << ct.parms_id() << endl;
+                // cout << "temp_rot: " << temp_rot.parms_id() << endl;
+                evaluator.multiply_plain_inplace(temp_rot, mat_Us);
+                // cout << "temp_rot: " << temp_rot.parms_id() << endl;
+                evaluator.rescale_to_next_inplace(temp_rot);
+                temp_rot.scale() = scale;
+                // evaluator.mod_switch_to_inplace(temp_rot, last_parms_id);
+                // cout << "ct_ls[i]: " << ct_ls[i].parms_id() << endl;
+                evaluator.add(ct_ls[i-1], temp_rot, ct_ls[i]);
+                // cout << "ct_ls[i]: " << ct_ls[i].parms_id() << endl;
+                i++;
+            }
+            result = ct_ls[i-1];
+            break;
+        }
+        case 1:{
+            int i = 0;
+            Ciphertext ct_ls[2*d-1];
+            Plaintext mat_Ut;
+            ct_ls[i] = ct;
+            mat_Ut = genUt(d, 0, scale, encoder);
+            evaluator.mod_switch_to_inplace(mat_Ut, parms_id);
+            evaluator.multiply_plain_inplace(ct_ls[i], mat_Ut);
+            evaluator.rescale_to_next_inplace(ct_ls[i]);
+            ct_ls[i].scale() = scale;
+            // evaluator.mod_switch_to_inplace(ct_ls[i], last_parms_id);
+            i++;
+            for (int k = 1; k < d; k++){
+                Ciphertext temp_rot;
+                mat_Ut = genUt(d, k, scale, encoder);
+                evaluator.mod_switch_to_inplace(mat_Ut, parms_id);
+
+                evaluator.rotate_vector(ct, d*k, gal_keys, temp_rot);
+                evaluator.multiply_plain_inplace(temp_rot, mat_Ut);
+                evaluator.rescale_to_next_inplace(temp_rot);
+                temp_rot.scale() = scale;
+                // evaluator.mod_switch_to_inplace(temp_rot, last_parms_id);
+                evaluator.add(ct_ls[i-1], temp_rot, ct_ls[i]);
+                i++;
+            }
+            result = ct_ls[i-1];
+            break;
+        }
+        case 2:{
+            Ciphertext temp_rot1, temp_rot2;
+            Plaintext mat_Vk, mat_Vkd;
+            mat_Vk = genVk(d, k_m, scale, encoder);
+            mat_Vkd = genVkd(d, k_m, scale, encoder);
+            evaluator.mod_switch_to_inplace(mat_Vk, parms_id);
+            evaluator.mod_switch_to_inplace(mat_Vkd, parms_id);
+
+            evaluator.rotate_vector(ct, k_m, gal_keys, temp_rot1);
+            evaluator.rotate_vector(ct, k_m-d, gal_keys, temp_rot2);
+            // cout << "a" << endl;
+            evaluator.multiply_plain_inplace(temp_rot1, mat_Vk);
+            // cout << "b" << endl;
+            evaluator.rescale_to_next_inplace(temp_rot1);
+            temp_rot1.scale() = scale;
+            // evaluator.mod_switch_to_inplace(temp_rot1, last_parms_id);
+            // cout << "c" << endl;
+            evaluator.multiply_plain_inplace(temp_rot2, mat_Vkd);
+            // cout << "d" << endl;
+            evaluator.rescale_to_next_inplace(temp_rot2);
+            temp_rot2.scale() = scale;
+            // evaluator.mod_switch_to_inplace(temp_rot1, last_parms_id);
+            // cout << "e" << endl;
+            evaluator.add(temp_rot1, temp_rot2, result);
+            // cout << "f" << endl;
+            break;
+        }
+        case 3:{
+            Plaintext mat_ones;
+            mat_ones = genOnes(d, scale, encoder);
+            evaluator.mod_switch_to_inplace(mat_ones, parms_id);
+            evaluator.rotate_vector(ct, d*k_m, gal_keys, result);
+            evaluator.multiply_plain_inplace(result, mat_ones);
+            evaluator.rescale_to_next_inplace(result);
+            result.scale() = scale;
+            break;
+        }
+        default:{
+            cout << "Error: Wrong U_type value!" << endl;
+            break;
+        }
+    }
+    return result;
+}
+
 //********************************************************************************
-// inline vector<double> genUs(int d, int k)
+// Matrix multiplication functions
+//********************************************************************************
+// template <typename T>
+// inline Ciphertext mat_mult(Ciphertext ct_a, Ciphertext ct_b, int d, double scale, 
+//     CKKSEncoder &encoder, Evaluator &evaluator, const GaloisKeys &gal_keys, 
+//     T relin_keys)
 // {
-//     vector<double> result;
-//     result.reserve(d*d);
-//     for (int i = 0; i < d*d; i++) {
-//         result.push_back(0);
-//     }
+//     Ciphertext result, ct_a0, ct_b0;
 
-//     for (int l = 0; l < d*d; l++){
-//         if (k >= 0){
-//             if ((l-d*k >= 0) && (l-d*k < d-k)){
-//                 result[l] = 1;
-//             }
-//         } else {
-//             if ((l-(d+k)*d >= -k) && (l-(d+k)*d < d)){
-//                 result[l] = 1;
-//             }
-//         }   
-//     }
-//     return result;
-// }
-
-// inline vector<double> genUt(int d, int k)
-// {
-//     vector<double> result;
-//     result.reserve(d*d);
-//     for (int i = 0; i < d*d; i++) {
-//         result.push_back(0);
-//     }
-//     for (int i = 0; i < d; i++){
-//         for (int l = 0; l < d*d; l++){
-//             if (l == k+d*i){
-//                 result[l] = 1;
-//             }
-//         }
-//     }
-//     return result;
-// }
-
-// inline vector<double> genVk(int d, int k)
-// {
-//     vector<double> result;
-//     result.reserve(d*d);
-//     for (int i = 0; i < d*d; i++) {
-//         result.push_back(0);
-//     }
-
-//     for (int l = 0; l < d*d; l++){
-//         if ((l % d >= 0) && (l % d < d-k)){
-//             result[l] = 1;
-//         }
-//     }
-//     return result;
-// }
-
-// inline vector<double> genVkd(int d, int k)
-// {
-//     vector<double> result;
-//     result.reserve(d*d);
-//     for (int i = 0; i < d*d; i++) {
-//         result.push_back(0);
-//     }
-
-//     for (int l = 0; l < d*d; l++){
-//         if ((l % d >= d-k) && (l % d < d)){
-//             result[l] = 1;
-//         }
-//     }
-//     return result;
-// }
-
-// inline vector<double> linear_tran(vector<double> ct, int d, int U_type, int k_m)
-// {
-//     vector<double> result;
-
-//     switch (U_type)
-//     {
-//         case 0:{
-//             int i = 0;
-//             vector<double> ct_ls [2*d-1];
-//             ct_ls[i] = cmult(ct, genUs(d, 0));
-//             i++;
-//             for (int k = 1-d; k < 0; k++){
-//                 ct_ls[i] = add(ct_ls[i-1], cmult(rot(ct, k), genUs(d, k)));
-//                 i++;
-//             }
-//             for (int k = 1; k < d; k++){
-//                 ct_ls[i] = add(ct_ls[i-1], cmult(rot(ct, k), genUs(d, k)));
-//                 i++;
-//             }
-//             result = ct_ls[i-1];
-//             break;
-//         }
-//         case 1:{
-//             int i = 0;
-//             vector<double> ct_ls [2*d-1];
-//             ct_ls[i] = cmult(ct, genUt(d, 0));
-//             i++;
-//             for (int k = 1; k < d; k++){
-//                 ct_ls[i] = add(ct_ls[i-1], cmult(rot(ct, d*k), genUt(d, k)));
-//                 i++;
-//             }
-//             result = ct_ls[i-1];
-//             break;
-//         }
-//         case 2:{
-//             result = add(cmult(rot(ct, k_m), genVk(d, k_m)), cmult(rot(ct, k_m-d), genVkd(d, k_m)));
-//             break;
-//         }
-//         case 3:{
-//             result = rot(ct, d*k_m);
-//             break;
-//         }
-//         default:{
-//             cout << "Error: Wrong U_type value!" << endl;
-//             break;
-//         }
-//     }
-//     return result;
-// }
-
-// //********************************************************************************
-// // Matrix multiplication functions
-// //********************************************************************************
-// inline vector<double> mat_mult(vector<double> ct_a, vector<double> ct_b, int d)
-// {
-//     vector<double> result;
-//     vector<double> ct_a0;
-//     vector<double> ct_b0;
-
-//     ct_a0 = linear_tran(ct_a, d, 0, 0);
-//     ct_b0 = linear_tran(ct_b, d, 1, 0);
+//     ct_a0 = linear_tran(ct_a, d, 0, 0, scale, encoder, evaluator, gal_keys);
+//     ct_b0 = linear_tran(ct_b, d, 1, 0, scale, encoder, evaluator, gal_keys);
 
 //     int i = 0;
-//     vector<double> ab_ls [d];
-//     ab_ls[i] = mult(ct_a0, ct_b0);
+//     Ciphertext ab_ls[d];
+//     evaluator.multiply(ct_a0, ct_b0, ab_ls[i]);
+//     evaluator.relinearize_inplace(ab_ls[i], relin_keys);
+//     evaluator.rescale_to_next_inplace(ab_ls[i]);
 //     i++;
 
 //     for (int k = 1; k < d; k++){
-//         vector<double> ct_ak;
-//         vector<double> ct_bk;
-
-//         ct_ak = linear_tran(ct_a0, d, 2, k);
-//         ct_bk = linear_tran(ct_b0, d, 3, k);
-
-//         ab_ls[i] = add(ab_ls[i-1], mult(ct_ak, ct_bk));
+//         Ciphertext ct_ak, ct_bk, temp_mult;
+//         ct_ak = linear_tran(ct_a0, d, 2, k, scale, encoder, evaluator, gal_keys);
+//         ct_bk = linear_tran(ct_b0, d, 3, k, scale, encoder, evaluator, gal_keys);
+//         evaluator.multiply(ct_ak, ct_bk, temp_mult);
+//         evaluator.relinearize_inplace(temp_mult, relin_keys);
+//         evaluator.rescale_to_next_inplace(temp_mult);
+//         evaluator.add(ab_ls[i-1], temp_mult, ab_ls[i]);
 //         i++;
 //     }
 //     result = ab_ls[i-1];
@@ -510,6 +619,7 @@ int main()
     auto public_key = keygen.public_key();
     auto secret_key = keygen.secret_key();
     auto relin_keys = keygen.relin_keys();
+    GaloisKeys gal_keys = keygen.galois_keys();
     Encryptor encryptor(context, public_key);
     Evaluator evaluator(context);
     Decryptor decryptor(context, secret_key);
@@ -517,6 +627,16 @@ int main()
     size_t slot_count = encoder.slot_count();
     cout << "Number of slots: " << slot_count << endl;
     cout << endl;
+
+    int p_i = 0;
+    parms_id_type parms_ids[3];
+    auto context_data = context->first_context_data();
+    while (context_data)
+    {
+        parms_ids[p_i] = context_data->parms_id();
+        context_data = context_data->next_context_data();
+        p_i++;
+    }
 
 
     //////////////////////////////////////////////////////////////////////////////
@@ -598,6 +718,61 @@ int main()
     //////////////////////////////////////////////////////////////////////////////
     // Matrix multiplication
     //////////////////////////////////////////////////////////////////////////////
+    /*
+    First print the key level parameter information.
+    */
+    // auto context_data = context->key_context_data();
+    // cout << "----> Level (chain index): " << context_data->chain_index();
+    // cout << " ...... key_context_data()" << endl;
+    // cout << "      parms_id: " << context_data->parms_id() << endl;
+    // cout << "      coeff_modulus primes: ";
+    // cout << hex;
+    // for(const auto &prime : context_data->parms().coeff_modulus())
+    // {
+    //     cout << prime.value() << " ";
+    // }
+    // cout << dec << endl;
+    // cout << "\\" << endl;
+    // cout << " \\-->";
+
+    // /*
+    // Next iterate over the remaining (data) levels.
+    // */
+    // context_data = context->first_context_data();
+    // while (context_data)
+    // {
+    //     cout << " Level (chain index): " << context_data->chain_index();
+    //     if (context_data->parms_id() == context->first_parms_id())
+    //     {
+    //         cout << " ...... first_context_data()" << endl;
+    //     }
+    //     else if (context_data->parms_id() == context->last_parms_id())
+    //     {
+    //         cout << " ...... last_context_data()" << endl;
+    //     }
+    //     else
+    //     {
+    //         cout << endl;
+    //     }
+    //     cout << "      parms_id: " << context_data->parms_id() << endl;
+    //     cout << "      coeff_modulus primes: ";
+    //     cout << hex;
+    //     for(const auto &prime : context_data->parms().coeff_modulus())
+    //     {
+    //         cout << prime.value() << " ";
+    //     }
+    //     cout << dec << endl;
+    //     cout << "\\" << endl;
+    //     cout << " \\-->";
+
+    //     /*
+    //     Step forward in the chain.
+    //     */
+    //     context_data = context_data->next_context_data();
+    // }
+    // cout << " End of chain reached" << endl << endl;
+    // /////////////////////////////////////////////////////////////////////
+
     vector<double> input_a;
     for (int i = 0; i < 4096; i++) {
         input_a.push_back(i);
@@ -607,17 +782,77 @@ int main()
         input_b.push_back(4095-i);
     }
 
-    Plaintext a_plain;
+    Plaintext a_plain, b_plain;
     encoder.encode(input_a, scale, a_plain);
-    Ciphertext a_encrypted;
+    encoder.encode(input_b, scale, b_plain);
+    Ciphertext a_encrypted, b_encrypted;
     encryptor.encrypt(a_plain, a_encrypted);
+    encryptor.encrypt(b_plain, b_encrypted);
+    
 
     Plaintext plain_mult_result;
-    decryptor.decrypt(a_encrypted, plain_mult_result);
+    Ciphertext cipher_mult_result;
+
+    // //////////////
+    // Ciphertext ct_a0;
+    // ct_a0 = linear_tran(a_encrypted, 64, 0, 0, scale, encoder, evaluator, gal_keys);
+    // // cout << "ct_a0: " << ct_a0.parms_id() << endl;
+    // // cout << "a_encrypted: " << a_encrypted.parms_id() << endl;
+    // Ciphertext temp_rot1;
+    // evaluator.rotate_vector(ct_a0, 1, gal_keys, temp_rot1);
+    // Plaintext vk;
+    // vk = genVk(64, 1, scale, encoder);
+    // // cout << "vk: " << vk.parms_id() << endl;
+    // // cout << "temp_rot1: " << temp_rot1.parms_id() << endl;
+    // evaluator.multiply_plain_inplace(temp_rot1, vk);
+    // // cout << "temp_rot1: " << temp_rot1.parms_id() << endl;
+    // cipher_mult_result = temp_rot1;
+    // //////////////////
+
+    /////////////////
+    int d = 64;
+    Ciphertext ct_a0, ct_b0;
+
+    ct_a0 = linear_tran(a_encrypted, d, 0, 0, scale, encoder, evaluator, gal_keys, parms_ids[0]);
+    ct_b0 = linear_tran(b_encrypted, d, 1, 0, scale, encoder, evaluator, gal_keys, parms_ids[0]);
+
+    int i = 0;
+    Ciphertext ab_ls[d];
+    cout << "ct_a0: " << ct_a0.parms_id() << endl;
+    cout << "ct_b0: " << ct_b0.parms_id() << endl;
+    evaluator.multiply(ct_a0, ct_b0, ab_ls[i]);
+    evaluator.relinearize_inplace(ab_ls[i], relin_keys);
+    evaluator.rescale_to_next_inplace(ab_ls[i]);
+    ab_ls[i].scale() = scale;
+    evaluator.mod_switch_to_inplace(ab_ls[i], parms_ids[2]);
+    i++;
+
+    for (int k = 1; k < d; k++){
+        cout << i << endl;
+        Ciphertext ct_ak, ct_bk, temp_mult;
+        
+        ct_ak = linear_tran(ct_a0, d, 2, k, scale, encoder, evaluator, gal_keys, parms_ids[1]);
+        ct_bk = linear_tran(ct_b0, d, 3, k, scale, encoder, evaluator, gal_keys, parms_ids[1]);
+        cout << "ct_ak: " << ct_ak.parms_id() << endl;
+        cout << "ct_bk: " << ct_bk.parms_id() << endl;
+        evaluator.multiply(ct_ak, ct_bk, temp_mult);
+        evaluator.relinearize_inplace(temp_mult, relin_keys);
+        evaluator.rescale_to_next_inplace(temp_mult);
+        temp_mult.scale() = scale;
+        evaluator.add(ab_ls[i-1], temp_mult, ab_ls[i]);
+        i++;
+    }
+
+    cipher_mult_result = ab_ls[i-1];
+    //////////////
+
+    decryptor.decrypt(cipher_mult_result, plain_mult_result);
     vector<double> mult_result;
     encoder.decode(plain_mult_result, mult_result);
     cout << "Matrix multiplication result: " << endl;
-    print_vector(mult_result, 4096, 10);
+    print_vector(mult_result, 4096, 3);
+
+
 
     return 0;
 }

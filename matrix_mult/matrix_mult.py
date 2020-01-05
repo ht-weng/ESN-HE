@@ -1,5 +1,8 @@
 import numpy as np
 import math
+import sys
+
+np.set_printoptions(threshold=sys.maxsize)
 
 def rot(ct, l):
     return np.roll(ct, -l)
@@ -194,5 +197,6 @@ def mat_mult_t(a, b, d):
 
 print('Square matrix multiplication result for verification: ')
 print(mat_mult_t(a, b, 3))
-
+print('Unit Testing: ')
+print(linear_tran(a_text, 3, 0, 1))
 
