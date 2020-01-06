@@ -296,35 +296,35 @@ inline vector<double> rmat_mult(vector<double> ct_a, vector<double> ct_b, int d,
 
 int main() {  
     vector<double> ct_a;
-    for (int i = 0; i < 9; i++) {
-        ct_a.push_back(i);
+    for (int i = 0; i < 4096; i++) {
+        ct_a.push_back(10);
     }
     vector<double> ct_b;
-    for (int i = 0; i < 9; i++) {
-        ct_b.push_back(10+i);
+    for (int i = 0; i < 4096; i++) {
+        ct_b.push_back(10);
     }
 
-    vector<double> ct_ar;
-    for (int i = 0; i < 9; i++) {
-        ct_ar.push_back(i % 3);
-    }
-    cout<<"Square Matrix Multiplication"<<endl;
-    cout<<"A: "<<endl;
-    print_vector(ct_a, 9);
-    cout<<"B: "<<endl;
-    print_vector(ct_b, 9);
-    cout<<"A * B: "<<endl;
-    vector<double> result_1 = mat_mult(ct_a, ct_b, 3);
-    print_vector(result_1, 9);
+    // vector<double> ct_ar;
+    // for (int i = 0; i < 4096; i++) {
+    //     ct_ar.push_back(i % 3);
+    // }
+    // cout<<"Square Matrix Multiplication"<<endl;
+    // cout<<"A: "<<endl;
+    // print_vector(ct_a, 4096);
+    // cout<<"B: "<<endl;
+    // print_vector(ct_b, 4096);
+    // cout<<"A * B: "<<endl;
+    vector<double> result_1 = mat_mult(ct_a, ct_b, 64);
+    print_vector(result_1, 20);
 
-    cout<<"Rectangular Matrix Multiplication"<<endl;
-    cout<<"A: "<<endl;
-    print_vector(ct_ar, 9);
-    cout<<"B: "<<endl;
-    print_vector(ct_b, 9);
-    cout<<"A * B: "<<endl;
-    vector<double> result_2 = rmat_mult(ct_ar, ct_b, 3, 1);
-    print_vector(result_2, 9);
+    // cout<<"Rectangular Matrix Multiplication"<<endl;
+    // cout<<"A: "<<endl;
+    // print_vector(ct_ar, 4096);
+    // cout<<"B: "<<endl;
+    // print_vector(ct_b, 4096);
+    // cout<<"A * B: "<<endl;
+    // vector<double> result_2 = rmat_mult(ct_ar, ct_b, 64, 1);
+    // print_vector(result_2, 4096);
     
     return 0;  
     }  
