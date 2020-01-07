@@ -260,6 +260,7 @@ inline vector<double> mat_mult(vector<double> ct_a, vector<double> ct_b, int d)
     return result;
 }
 
+// rmat_mult can only be applied when matrix dimension equals to 64
 inline vector<double> rmat_mult(vector<double> ct_a, vector<double> ct_b, int d, int l)
 {
     vector<double> result;
@@ -284,6 +285,7 @@ inline vector<double> rmat_mult(vector<double> ct_a, vector<double> ct_b, int d,
         ab_ls[i] = add(ab_ls[i-1], mult(ct_ak, ct_bk));
         i++;
     }
+
     vector<double> ab;
     ab = ab_ls[i-1];
     for (int k = 0; k < ceil(log2(d/l)); k++){
@@ -294,37 +296,62 @@ inline vector<double> rmat_mult(vector<double> ct_a, vector<double> ct_b, int d,
     return result;
 }
 
-int main() {  
+int main() {
+    int max_d = 64;
+    int mat_d = 3;
+    int rmat_d = 1;
     vector<double> ct_a;
-    for (int i = 0; i < 4096; i++) {
-        ct_a.push_back(10);
+    double elem_a = 0.0;
+    for (int i = 0; i < max_d*max_d; i++) {
+        if ((i%max_d < mat_d) && i < max_d*mat_d) {
+            ct_a.push_back(elem_a);
+            elem_a++;
+        }
+        else{
+            ct_a.push_back(0.0);
+        }
     }
+
+    vector<double> ct_ar;
+    for (int i = 0; i < max_d*max_d; i++) {
+        if ((i%max_d < mat_d) && i < max_d*mat_d) {
+            ct_ar.push_back(i%max_d);
+        }
+        else{
+            ct_ar.push_back(0.0);
+        }
+    }
+
     vector<double> ct_b;
-    for (int i = 0; i < 4096; i++) {
-        ct_b.push_back(10);
+    double elem_b = 0.0;
+    for (int i = 0; i < max_d*max_d; i++) {
+        if (i%max_d < mat_d && i < max_d*mat_d) {
+            ct_b.push_back(elem_b);
+            elem_b++;
+        }
+        else{
+            ct_b.push_back(0.0);
+        }
     }
 
-    // vector<double> ct_ar;
-    // for (int i = 0; i < 4096; i++) {
-    //     ct_ar.push_back(i % 3);
-    // }
-    // cout<<"Square Matrix Multiplication"<<endl;
-    // cout<<"A: "<<endl;
-    // print_vector(ct_a, 4096);
-    // cout<<"B: "<<endl;
-    // print_vector(ct_b, 4096);
-    // cout<<"A * B: "<<endl;
-    vector<double> result_1 = mat_mult(ct_a, ct_b, 64);
-    print_vector(result_1, 20);
+    cout<<"Square Matrix Multiplication"<<endl;
+    cout<<"A: "<<endl;
+    print_vector(ct_a, mat_d*max_d);
+    cout<<"B: "<<endl;
+    print_vector(ct_b, mat_d*max_d);
+    cout<<"A * B: "<<endl;
+    vector<double> result_1 = mat_mult(ct_a, ct_b, max_d);
+    print_vector(result_1, mat_d*max_d);
 
-    // cout<<"Rectangular Matrix Multiplication"<<endl;
-    // cout<<"A: "<<endl;
-    // print_vector(ct_ar, 4096);
-    // cout<<"B: "<<endl;
-    // print_vector(ct_b, 4096);
-    // cout<<"A * B: "<<endl;
-    // vector<double> result_2 = rmat_mult(ct_ar, ct_b, 64, 1);
-    // print_vector(result_2, 4096);
-    
+    cout<<"Rectangular Matrix Multiplication"<<endl;
+    cout<<"AR: "<<endl;
+    print_vector(ct_ar, mat_d*max_d);
+    cout<<"B: "<<endl;
+    print_vector(ct_b, mat_d*max_d);
+    cout<<"AR * B: "<<endl;
+    // rmat_mult is not used here because the matrix dimension is only 3
+    vector<double> result_2 = mat_mult(ct_ar, ct_b, max_d);
+    print_vector(result_2, mat_d*max_d);
+
     return 0;  
     }  

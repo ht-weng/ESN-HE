@@ -337,7 +337,7 @@ inline Ciphertext linear_tran(Ciphertext &ct, int d, int U_type, int k_m, double
             evaluator.mod_switch_to_inplace(mat_Us, parms_id);
             evaluator.multiply_plain_inplace(ct_ls[i], mat_Us);
             evaluator.rescale_to_next_inplace(ct_ls[i]);
-            cout << "ct_ls[i] scale: " << ct_ls[i].scale() << endl;
+            // cout << "ct_ls[i] scale: " << ct_ls[i].scale() << endl;
             ct_ls[i].scale() = scale;
             i++;
             for (int k = 1-d; k < 0; k++){
@@ -347,7 +347,7 @@ inline Ciphertext linear_tran(Ciphertext &ct, int d, int U_type, int k_m, double
                 evaluator.rotate_vector(ct, k, gal_keys, temp_rot);
                 evaluator.multiply_plain_inplace(temp_rot, mat_Us);
                 evaluator.rescale_to_next_inplace(temp_rot);
-                cout << "temp_rot scale: " << temp_rot.scale() << endl;
+                // cout << "temp_rot scale: " << temp_rot.scale() << endl;
                 temp_rot.scale() = scale;
                 evaluator.add(ct_ls[i-1], temp_rot, ct_ls[i]);
                 i++;
@@ -359,7 +359,7 @@ inline Ciphertext linear_tran(Ciphertext &ct, int d, int U_type, int k_m, double
                 evaluator.rotate_vector(ct, k, gal_keys, temp_rot);
                 evaluator.multiply_plain_inplace(temp_rot, mat_Us);
                 evaluator.rescale_to_next_inplace(temp_rot);
-                cout << "temp_rot scale: " << temp_rot.scale() << endl;
+                // cout << "temp_rot scale: " << temp_rot.scale() << endl;
                 temp_rot.scale() = scale;
                 evaluator.add(ct_ls[i-1], temp_rot, ct_ls[i]);
                 i++;
@@ -376,7 +376,7 @@ inline Ciphertext linear_tran(Ciphertext &ct, int d, int U_type, int k_m, double
             evaluator.mod_switch_to_inplace(mat_Ut, parms_id);
             evaluator.multiply_plain_inplace(ct_ls[i], mat_Ut);
             evaluator.rescale_to_next_inplace(ct_ls[i]);
-            cout << "ct_ls[i] scale: " << ct_ls[i].scale() << endl;
+            // cout << "ct_ls[i] scale: " << ct_ls[i].scale() << endl;
             ct_ls[i].scale() = scale;
             i++;
             for (int k = 1; k < d; k++){
@@ -386,7 +386,7 @@ inline Ciphertext linear_tran(Ciphertext &ct, int d, int U_type, int k_m, double
                 evaluator.rotate_vector(ct, d*k, gal_keys, temp_rot);
                 evaluator.multiply_plain_inplace(temp_rot, mat_Ut);
                 evaluator.rescale_to_next_inplace(temp_rot);
-                cout << "temp_rot scale: " << temp_rot.scale() << endl;
+                // cout << "temp_rot scale: " << temp_rot.scale() << endl;
                 temp_rot.scale() = scale;
                 evaluator.add(ct_ls[i-1], temp_rot, ct_ls[i]);
                 i++;
@@ -406,11 +406,11 @@ inline Ciphertext linear_tran(Ciphertext &ct, int d, int U_type, int k_m, double
             evaluator.rotate_vector(ct, k_m-d, gal_keys, temp_rot2);
             evaluator.multiply_plain_inplace(temp_rot1, mat_Vk);
             evaluator.rescale_to_next_inplace(temp_rot1);
-            cout << "temp_rot1 scale: " << temp_rot1.scale() << endl;
+            // cout << "temp_rot1 scale: " << temp_rot1.scale() << endl;
             temp_rot1.scale() = scale;
             evaluator.multiply_plain_inplace(temp_rot2, mat_Vkd);
             evaluator.rescale_to_next_inplace(temp_rot2);
-            cout << "temp_rot2 scale: " << temp_rot2.scale() << endl;
+            // cout << "temp_rot2 scale: " << temp_rot2.scale() << endl;
             temp_rot2.scale() = scale;
             evaluator.add(temp_rot1, temp_rot2, result);
             break;
@@ -422,7 +422,7 @@ inline Ciphertext linear_tran(Ciphertext &ct, int d, int U_type, int k_m, double
             evaluator.rotate_vector(ct, d*k_m, gal_keys, result);
             evaluator.multiply_plain_inplace(result, mat_ones);
             evaluator.rescale_to_next_inplace(result);
-            cout << "result scale: " << result.scale() << endl;
+            // cout << "result scale: " << result.scale() << endl;
             result.scale() = scale;
             break;
         }
@@ -451,7 +451,7 @@ inline Ciphertext mat_mult(Ciphertext ct_a, Ciphertext ct_b, int d, double scale
     evaluator.multiply(ct_a0, ct_b0, ab_ls[i]);
     evaluator.relinearize_inplace(ab_ls[i], relin_keys);
     evaluator.rescale_to_next_inplace(ab_ls[i]);
-    cout << "ab_ls[i] scale: " << ab_ls[i].scale() << endl;
+    // cout << "ab_ls[i] scale: " << ab_ls[i].scale() << endl;
     ab_ls[i].scale() = scale;
     evaluator.mod_switch_to_inplace(ab_ls[i], parms_ids[3]);
     i++;
@@ -464,7 +464,7 @@ inline Ciphertext mat_mult(Ciphertext ct_a, Ciphertext ct_b, int d, double scale
         evaluator.multiply(ct_ak, ct_bk, temp_mult);
         evaluator.relinearize_inplace(temp_mult, relin_keys);
         evaluator.rescale_to_next_inplace(temp_mult);
-        cout << "temp_mult scale: " << temp_mult.scale() << endl;
+        // cout << "temp_mult scale: " << temp_mult.scale() << endl;
         temp_mult.scale() = scale;
         evaluator.mod_switch_to_inplace(temp_mult, parms_ids[3]);
         evaluator.add(ab_ls[i-1], temp_mult, ab_ls[i]);
@@ -474,107 +474,120 @@ inline Ciphertext mat_mult(Ciphertext ct_a, Ciphertext ct_b, int d, double scale
     return ab_ls[i-1];
 }
 
-// inline vector<double> rmat_mult(vector<double> ct_a, vector<double> ct_b, int d, int l)
-// {
-//     vector<double> result;
-//     vector<double> ct_a0;
-//     vector<double> ct_b0;
+// rmat_mult can only be applied when matrix size equals to ciphertext vector
+inline Ciphertext rmat_mult(Ciphertext ct_a, Ciphertext ct_b, int d, int l, double scale, 
+    CKKSEncoder &encoder, Evaluator &evaluator, const GaloisKeys &gal_keys, const RelinKeys &relin_keys, 
+    parms_id_type *parms_ids)
+{
+    Ciphertext ct_a0, ct_b0;
 
-//     ct_a0 = linear_tran(ct_a, d, 0, 0);
-//     ct_b0 = linear_tran(ct_b, d, 1, 0);
+    ct_a0 = linear_tran(ct_a, d, 0, 0, scale, encoder, evaluator, gal_keys, parms_ids[0]);
+    ct_b0 = linear_tran(ct_b, d, 1, 0, scale, encoder, evaluator, gal_keys, parms_ids[0]);
 
-//     int i = 0;
-//     vector<double> ab_ls [d];
-//     ab_ls[i] = mult(ct_a0, ct_b0);
-//     i++;
+    int i = 0;
+    Ciphertext ab_ls[d];
+    evaluator.multiply(ct_a0, ct_b0, ab_ls[i]);
+    evaluator.relinearize_inplace(ab_ls[i], relin_keys);
+    evaluator.rescale_to_next_inplace(ab_ls[i]);
+    // cout << "ab_ls[i] scale: " << ab_ls[i].scale() << endl;
+    ab_ls[i].scale() = scale;
+    evaluator.mod_switch_to_inplace(ab_ls[i], parms_ids[3]);
+    i++;
 
-//     for (int k = 1; k < l; k++){
-//         vector<double> ct_ak;
-//         vector<double> ct_bk;
+    for (int k = 1; k < l; k++){
+        Ciphertext ct_ak, ct_bk, temp_mult;
+        
+        ct_ak = linear_tran(ct_a0, d, 2, k, scale, encoder, evaluator, gal_keys, parms_ids[1]);
+        ct_bk = linear_tran(ct_b0, d, 3, k, scale, encoder, evaluator, gal_keys, parms_ids[1]);
+        evaluator.multiply(ct_ak, ct_bk, temp_mult);
+        evaluator.relinearize_inplace(temp_mult, relin_keys);
+        evaluator.rescale_to_next_inplace(temp_mult);
+        // cout << "temp_mult scale: " << temp_mult.scale() << endl;
+        temp_mult.scale() = scale;
+        evaluator.mod_switch_to_inplace(temp_mult, parms_ids[3]);
+        evaluator.add(ab_ls[i-1], temp_mult, ab_ls[i]);
+        i++;
+    }
 
-//         ct_ak = linear_tran(ct_a0, d, 2, k);
-//         ct_bk = linear_tran(ct_b0, d, 3, k);
-
-//         ab_ls[i] = add(ab_ls[i-1], mult(ct_ak, ct_bk));
-//         i++;
-//     }
-//     vector<double> ab;
-//     ab = ab_ls[i-1];
-//     for (int k = 0; k < ceil(log2(d/l)); k++){
-//         ab_ls[i] = add(ab_ls[i-1], rot(ab, l*d*pow(2, k)));
-//         i++;
-//     }
-//     result = ab_ls[i-1];
-//     return result;
-// }
+    Ciphertext ab;
+    ab = ab_ls[i-1];
+    for (int k = 0; k < ceil(log2(d/l)); k++){
+        Ciphertext temp_rot;
+        evaluator.rotate_vector(ab, (l*d*pow(2, k)), gal_keys, temp_rot);
+        evaluator.add(ab_ls[i-1], temp_rot, ab_ls[i]);
+        i++;
+    }
+    cout << i << endl;
+    return ab_ls[i-1];
+}
 
 //********************************************************************************
 // Mackey glass helper functions
 //********************************************************************************
-#define HARD_MACKEY_GLASS  	30
-#define SOFT_MACKEY_GLASS	17
+// #define HARD_MACKEY_GLASS  	30
+// #define SOFT_MACKEY_GLASS	17
 
-// Define difficulty of the problem
-#define MACKEY_GLASS_DIFFICULTY			SOFT_MACKEY_GLASS
+// // Define difficulty of the problem
+// #define MACKEY_GLASS_DIFFICULTY			SOFT_MACKEY_GLASS
 
-// Mackey glass equation
-double mackeyglass_eq(double x_t, double x_t_minus_tau, double a, double b) {
-	double x_dot = -b*x_t + a*x_t_minus_tau/(1 + pow(x_t_minus_tau,10));
-	return x_dot;
-}
+// // Mackey glass equation
+// double mackeyglass_eq(double x_t, double x_t_minus_tau, double a, double b) {
+// 	double x_dot = -b*x_t + a*x_t_minus_tau/(1 + pow(x_t_minus_tau,10));
+// 	return x_dot;
+// }
 
-double mackeyglass_rk4(double x_t, double x_t_minus_tau, double deltat, double a, double b) {
-	double k1 = deltat*mackeyglass_eq(x_t,          x_t_minus_tau, a, b);
-	double k2 = deltat*mackeyglass_eq(x_t+0.5*k1,   x_t_minus_tau, a, b);
-	double k3 = deltat*mackeyglass_eq(x_t+0.5*k2,   x_t_minus_tau, a, b);
-	double k4 = deltat*mackeyglass_eq(x_t+k3,       x_t_minus_tau, a, b);
-	double x_t_plus_deltat = (x_t + k1/6 + k2/3 + k3/3 + k4/6);
-	return x_t_plus_deltat;
-}
+// double mackeyglass_rk4(double x_t, double x_t_minus_tau, double deltat, double a, double b) {
+// 	double k1 = deltat*mackeyglass_eq(x_t,          x_t_minus_tau, a, b);
+// 	double k2 = deltat*mackeyglass_eq(x_t+0.5*k1,   x_t_minus_tau, a, b);
+// 	double k3 = deltat*mackeyglass_eq(x_t+0.5*k2,   x_t_minus_tau, a, b);
+// 	double k4 = deltat*mackeyglass_eq(x_t+k3,       x_t_minus_tau, a, b);
+// 	double x_t_plus_deltat = (x_t + k1/6 + k2/3 + k3/3 + k4/6);
+// 	return x_t_plus_deltat;
+// }
 
-// Generate a Mackey-Glass time series
-void mackey(double *X, double *T, int sample_n) {
-	double a        = 0.2;     // value for a in eq (1)
-	double b        = 0.1;     // value for b in eq (1)
-	int tau      	= MACKEY_GLASS_DIFFICULTY;		// delay constant in eq (1)
-	double x0       = 1.2;		// initial condition: x(t=0)=x0
-	double deltat   = 0.1;	    // time step size (which coincides with the integration step)
-	int interval 	= 1;	    // output is printed at every 'interval' time steps
+// // Generate a Mackey-Glass time series
+// void mackey(double *X, double *T, int sample_n) {
+// 	double a        = 0.2;     // value for a in eq (1)
+// 	double b        = 0.1;     // value for b in eq (1)
+// 	int tau      	= MACKEY_GLASS_DIFFICULTY;		// delay constant in eq (1)
+// 	double x0       = 1.2;		// initial condition: x(t=0)=x0
+// 	double deltat   = 0.1;	    // time step size (which coincides with the integration step)
+// 	int interval 	= 1;	    // output is printed at every 'interval' time steps
 
-	double time = 0;
-	int index = 1;
-	int history_length = floor(tau/deltat);
-	double x_history[history_length];
-	for (int i = 0; i < x_history[i]; ++i) x_history[i] = 0.0;
-	double x_t = x0;
-	double x_t_minus_tau, x_t_plus_deltat;
+// 	double time = 0;
+// 	int index = 1;
+// 	int history_length = floor(tau/deltat);
+// 	double x_history[history_length];
+// 	for (int i = 0; i < x_history[i]; ++i) x_history[i] = 0.0;
+// 	double x_t = x0;
+// 	double x_t_minus_tau, x_t_plus_deltat;
 
-	// Set every value to the default value
-	for (int i = 0; i < sample_n; i++) {
-		X[i] = x_t;
+// 	// Set every value to the default value
+// 	for (int i = 0; i < sample_n; i++) {
+// 		X[i] = x_t;
 
-//		if ((i % interval == 0) && (i > 0)) {
-//			printf("%f %f\n", T[i-1], X[i]);
-//		}
+// //		if ((i % interval == 0) && (i > 0)) {
+// //			printf("%f %f\n", T[i-1], X[i]);
+// //		}
 
-		if (tau == 0)
-			x_t_minus_tau = 0.0;
-		else
-			x_t_minus_tau = x_history[index];
+// 		if (tau == 0)
+// 			x_t_minus_tau = 0.0;
+// 		else
+// 			x_t_minus_tau = x_history[index];
 
 
-		x_t_plus_deltat = mackeyglass_rk4(x_t, x_t_minus_tau, deltat, a, b);
+// 		x_t_plus_deltat = mackeyglass_rk4(x_t, x_t_minus_tau, deltat, a, b);
 
-		if (tau != 0) {
-			x_history[index] = x_t_plus_deltat;
-			index = (index % history_length)+1;
-		}
+// 		if (tau != 0) {
+// 			x_history[index] = x_t_plus_deltat;
+// 			index = (index % history_length)+1;
+// 		}
 
-		time = time + deltat;
-		T[i] = time;
-		x_t = x_t_plus_deltat;
-	}
-}
+// 		time = time + deltat;
+// 		T[i] = time;
+// 		x_t = x_t_plus_deltat;
+// 	}
+// }
 
 //********************************************************************************
 // Main function
@@ -590,6 +603,7 @@ int main()
     parms.set_poly_modulus_degree(poly_modulus_degree);
     parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, { 40, 30, 30, 30, 40 }));
     double scale = pow(2.0, 30);
+    int max_d = 64;
 
     // Set up Context
     auto context = SEALContext::Create(parms);
@@ -625,48 +639,96 @@ int main()
     // Matrix multiplication
     //////////////////////////////////////////////////////////////////////////////
     // Construct input matrices as vectors
+    int mat_d = 3;
+    int rmat_d = 1;
     vector<double> input_a;
-    for (int i = 0; i < 4096; i++) {
-        input_a.push_back(2);
+    double elem_a = 0.0;
+    for (int i = 0; i < max_d*max_d; i++) {
+        if ((i%max_d < mat_d) && i < max_d*mat_d) {
+            input_a.push_back(elem_a);
+            elem_a++;
+        }
+        else{
+            input_a.push_back(0.0);
+        }
     }
+
+    vector<double> input_ar;
+    for (int i = 0; i < max_d*max_d; i++) {
+        if ((i%max_d < mat_d) && i < max_d*mat_d) {
+            input_ar.push_back(i%max_d);
+        }
+        else{
+            input_ar.push_back(0.0);
+        }
+    }
+
     vector<double> input_b;
-    for (int i = 0; i < 4096; i++) {
-        input_b.push_back(2);
+    double elem_b = 0.0;
+    for (int i = 0; i < max_d*max_d; i++) {
+        if (i%max_d < mat_d && i < max_d*mat_d) {
+            input_b.push_back(elem_b);
+            elem_b++;
+        }
+        else{
+            input_b.push_back(0.0);
+        }
     }
 
     // Encode and encrypt input matrices
-    Plaintext a_plain, b_plain;
+    Plaintext a_plain, ar_plain, b_plain;
     encoder.encode(input_a, scale, a_plain);
+    encoder.encode(input_ar, scale, ar_plain);
     encoder.encode(input_b, scale, b_plain);
-    Ciphertext a_encrypted, b_encrypted;
+    Ciphertext a_encrypted, ar_encrypted, b_encrypted;
     encryptor.encrypt(a_plain, a_encrypted);
+    encryptor.encrypt(ar_plain, ar_encrypted);
     encryptor.encrypt(b_plain, b_encrypted);
     
     // Calculate multiplication of input matrices and decrypt the result
-    Plaintext plain_mult_result;
-    Ciphertext cipher_mult_result;
+    Plaintext plain_mult_result, plain_rmult_result;
+    Ciphertext cipher_mult_result, cipher_rmult_result;
 
-    cout << "scale: " << scale << endl;
+    // cout << "scale: " << scale << endl;
 
-    for (int i = 0; i < 4; i++) {
-        cout << "parms_ids_" << i <<": " << endl;
-        cout << parms_ids[i] << endl;
-    }
+    // for (int i = 0; i < 4; i++) {
+    //     cout << "parms_ids_" << i <<": " << endl;
+    //     cout << parms_ids[i] << endl;
+    // }
 
-    cout << "a_encyrpted scale: " << a_encrypted.scale() << endl;
-    cout << "a_encyrpted parms_id: " << a_encrypted.parms_id() << endl;
+    // cout << "a_encyrpted scale: " << a_encrypted.scale() << endl;
+    // cout << "a_encyrpted parms_id: " << a_encrypted.parms_id() << endl;
 
-    cipher_mult_result = mat_mult(a_encrypted, b_encrypted, 64, scale, encoder, evaluator, 
+    cipher_mult_result = mat_mult(a_encrypted, b_encrypted, max_d, scale, encoder, evaluator, 
     gal_keys, relin_keys, parms_ids);
 
-    cout << "cipher result scale: " << cipher_mult_result.scale() << endl;
-    cout << "cipher result parms_id: " << cipher_mult_result.parms_id() << endl;
+    // rmat_mult is not used because the matrix size does not equal to ciphertext size
+    cipher_rmult_result = mat_mult(ar_encrypted, b_encrypted, max_d, scale, encoder, evaluator, 
+    gal_keys, relin_keys, parms_ids);
+
+    // cipher_rmult_result = rmat_mult(ar_encrypted, b_encrypted, max_d, rmat_d, scale, encoder, evaluator, 
+    // gal_keys, relin_keys, parms_ids);
+
+    // cout << "cipher result scale: " << cipher_mult_result.scale() << endl;
+    // cout << "cipher result parms_id: " << cipher_mult_result.parms_id() << endl;
 
     decryptor.decrypt(cipher_mult_result, plain_mult_result);
+    decryptor.decrypt(cipher_rmult_result, plain_rmult_result);
     vector<double> mult_result;
+    vector<double> rmult_result;
     encoder.decode(plain_mult_result, mult_result);
-    cout << "Matrix multiplication result: " << endl;
-    print_vector(mult_result, 20, 3);
+    encoder.decode(plain_rmult_result, rmult_result);
+
+    cout << "Matrix A: " << endl;
+    print_vector(input_a, mat_d*max_d, 3);
+    cout << "Matrix B: " << endl;
+    print_vector(input_b, mat_d*max_d, 3);
+    cout << "Matrix AR: " << endl;
+    print_vector(input_ar, mat_d*max_d, 3);
+    cout << "A * B: " << endl;
+    print_vector(mult_result, mat_d*max_d, 3);
+    cout << "AR * B: " << endl;
+    print_vector(rmult_result, mat_d*max_d, 3);
 
     //////////////////////////////////////////////////////////////////////////////
     // Mackey glass settings
