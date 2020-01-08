@@ -1,12 +1,5 @@
 /Applications/CLion.app/Contents/bin/cmake/mac/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /Users/justin/Desktop/HE/ESN-HE/SEAL_mackey
--- The CXX compiler identification is AppleClang 11.0.0.11000033
--- Check for working CXX compiler: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++
--- Check for working CXX compiler: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ -- works
--- Detecting CXX compiler ABI info
--- Detecting CXX compiler ABI info - done
--- Detecting CXX compile features
--- Detecting CXX compile features - done
--- Microsoft SEAL -> Version 3.4.4 detected
+-- Microsoft SEAL -> Version 3.4.5 detected
 -- Microsoft SEAL -> Library build type: Static_PIC
 -- Configuring done
 -- Generating done

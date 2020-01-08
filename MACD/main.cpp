@@ -225,300 +225,106 @@ inline void print_line(int line_number)
     std::cout << "Line " << std::setw(3) << line_number << " --> ";
 }
 
-// ********************************************************************************
-// Functions for linear transformation
-// ********************************************************************************
-inline Plaintext genUs(int d, int k, double scale, CKKSEncoder &encoder)
-{
+//////////////////////////////////////////////////////////////////////////////////
+// MACD helper functions
+//////////////////////////////////////////////////////////////////////////////////
+inline Ciphertext sum(const vector<Ciphertext>& v, CKKSEncoder &encoder, Encryptor &encryptor, 
+    Evaluator &evaluator, double scale) {
     vector<double> result;
-    result.reserve(d*d);
-    for (int i = 0; i < d*d; i++) {
-        result.push_back(0);
-    }
-
-    for (int l = 0; l < d*d; l++){
-        if (k >= 0){
-            if ((l-d*k >= 0) && (l-d*k < d-k)){
-                result[l] = 1;
-            }
-        } else {
-            if ((l-(d+k)*d >= -k) && (l-(d+k)*d < d)){
-                result[l] = 1;
-            }
-        }
-    }
+    result.push_back(0);
     Plaintext result_plain;
     encoder.encode(result, scale, result_plain);
-    return result_plain;
+    Ciphertext result_encrypted;
+    encryptor.encrypt(result_plain, result_encrypted);
+
+    for(int i=0; i < v.size(); i++) {
+        Ciphertext val = v[i];
+        evaluator.add_inplace(result_encrypted, val);
+    }
+    return result_encrypted;
 }
 
-inline Plaintext genUt(int d, int k, double scale, CKKSEncoder &encoder)
-{
-    vector<double> result;
-    result.reserve(d*d);
-    for (int i = 0; i < d*d; i++) {
-        result.push_back(0);
+inline vector<Ciphertext> slice(const vector<Ciphertext>& v, int start=0, int end=-1) {
+    int oldlen = v.size();
+    int newlen;
+
+    if (end == -1 or end >= oldlen){
+        newlen = oldlen-start;
+    } else {
+        newlen = end-start;
     }
-    for (int i = 0; i < d; i++){
-        for (int l = 0; l < d*d; l++){
-            if (l == k+d*i){
-                result[l] = 1;
-            }
-        }
+
+    vector<Ciphertext> nv(newlen);
+
+    for (int i=0; i<newlen; i++) {
+        nv[i] = v[start+i];
     }
-    Plaintext result_plain;
-    encoder.encode(result, scale, result_plain);
-    return result_plain;
+    return nv;
 }
 
-inline Plaintext genVk(int d, int k, double scale, CKKSEncoder &encoder)
-{
-    vector<double> result;
-    result.reserve(d*d);
-    for (int i = 0; i < d*d; i++) {
-        result.push_back(0);
+inline void print_vector(const vector<double>& v) {
+    for(int i=0; i < v.size(); i++) {
+        cout << v[i] << ' ';
     }
-
-    for (int l = 0; l < d*d; l++){
-        if ((l % d >= 0) && (l % d < d-k)){
-            result[l] = 1;
-        }
-    }
-    Plaintext result_plain;
-    encoder.encode(result, scale, result_plain);
-    return result_plain;
+    cout << "\n";
 }
 
-inline Plaintext genVkd(int d, int k, double scale, CKKSEncoder &encoder)
-{
-    vector<double> result;
-    result.reserve(d*d);
-    for (int i = 0; i < d*d; i++) {
-        result.push_back(0);
-    }
+inline vector<double> csv2vec(string inputFileName) {
+    vector<double> data;
+    ifstream inputFile(inputFileName);
+    int l = 0;
 
-    for (int l = 0; l < d*d; l++){
-        if ((l % d >= d-k) && (l % d < d)){
-            result[l] = 1;
-        }
-    }
-    Plaintext result_plain;
-    encoder.encode(result, scale, result_plain);
-    return result_plain;
-}
-
-inline Plaintext genOnes(int d, double scale, CKKSEncoder &encoder)
-{
-    vector<double> result;
-    result.reserve(d*d);
-    for (int i = 0; i < d*d; i++) {
-        result.push_back(1);
-    }
-
-    Plaintext result_plain;
-    encoder.encode(result, scale, result_plain);
-    return result_plain;
-}
-
-inline Ciphertext linear_tran(Ciphertext &ct, int d, int U_type, int k_m, double scale, 
-    CKKSEncoder &encoder, Evaluator &evaluator, const GaloisKeys &gal_keys, 
-    const parms_id_type& parms_id)
-{
-    Ciphertext result;
-    
-    switch (U_type)
-    {
-        case 0:{
-            int i = 0;
-            Ciphertext ct_ls[2*d-1];
-            Plaintext mat_Us;
-            ct_ls[i] = ct;
-            mat_Us = genUs(d, 0, scale, encoder);
-            evaluator.mod_switch_to_inplace(mat_Us, parms_id);
-            evaluator.multiply_plain_inplace(ct_ls[i], mat_Us);
-            evaluator.rescale_to_next_inplace(ct_ls[i]);
-            // cout << "ct_ls[i] scale: " << ct_ls[i].scale() << endl;
-            ct_ls[i].scale() = scale;
-            i++;
-            for (int k = 1-d; k < 0; k++){
-                Ciphertext temp_rot;
-                mat_Us = genUs(d, k, scale, encoder);
-                evaluator.mod_switch_to_inplace(mat_Us, parms_id);
-                evaluator.rotate_vector(ct, k, gal_keys, temp_rot);
-                evaluator.multiply_plain_inplace(temp_rot, mat_Us);
-                evaluator.rescale_to_next_inplace(temp_rot);
-                // cout << "temp_rot scale: " << temp_rot.scale() << endl;
-                temp_rot.scale() = scale;
-                evaluator.add(ct_ls[i-1], temp_rot, ct_ls[i]);
-                i++;
-            }
-            for (int k = 1; k < d; k++){
-                Ciphertext temp_rot;
-                mat_Us = genUs(d, k, scale, encoder);
-                evaluator.mod_switch_to_inplace(mat_Us, parms_id);
-                evaluator.rotate_vector(ct, k, gal_keys, temp_rot);
-                evaluator.multiply_plain_inplace(temp_rot, mat_Us);
-                evaluator.rescale_to_next_inplace(temp_rot);
-                // cout << "temp_rot scale: " << temp_rot.scale() << endl;
-                temp_rot.scale() = scale;
-                evaluator.add(ct_ls[i-1], temp_rot, ct_ls[i]);
-                i++;
-            }
-            result = ct_ls[i-1];
+    while (inputFile) {
+        l++;
+        string line;
+        if (!getline(inputFile, line)) {
             break;
         }
-        case 1:{
-            int i = 0;
-            Ciphertext ct_ls[2*d-1];
-            Plaintext mat_Ut;
-            ct_ls[i] = ct;
-            mat_Ut = genUt(d, 0, scale, encoder);
-            evaluator.mod_switch_to_inplace(mat_Ut, parms_id);
-            evaluator.multiply_plain_inplace(ct_ls[i], mat_Ut);
-            evaluator.rescale_to_next_inplace(ct_ls[i]);
-            // cout << "ct_ls[i] scale: " << ct_ls[i].scale() << endl;
-            ct_ls[i].scale() = scale;
-            i++;
-            for (int k = 1; k < d; k++){
-                Ciphertext temp_rot;
-                mat_Ut = genUt(d, k, scale, encoder);
-                evaluator.mod_switch_to_inplace(mat_Ut, parms_id);
-                evaluator.rotate_vector(ct, d*k, gal_keys, temp_rot);
-                evaluator.multiply_plain_inplace(temp_rot, mat_Ut);
-                evaluator.rescale_to_next_inplace(temp_rot);
-                // cout << "temp_rot scale: " << temp_rot.scale() << endl;
-                temp_rot.scale() = scale;
-                evaluator.add(ct_ls[i-1], temp_rot, ct_ls[i]);
-                i++;
-            }
-            result = ct_ls[i-1];
-            break;
+        try {
+            data.push_back(stof(line));
         }
-        case 2:{
-            Ciphertext temp_rot1, temp_rot2;
-            Plaintext mat_Vk, mat_Vkd;
-            mat_Vk = genVk(d, k_m, scale, encoder);
-            mat_Vkd = genVkd(d, k_m, scale, encoder);
-            evaluator.mod_switch_to_inplace(mat_Vk, parms_id);
-            evaluator.mod_switch_to_inplace(mat_Vkd, parms_id);
-
-            evaluator.rotate_vector(ct, k_m, gal_keys, temp_rot1);
-            evaluator.rotate_vector(ct, k_m-d, gal_keys, temp_rot2);
-            evaluator.multiply_plain_inplace(temp_rot1, mat_Vk);
-            evaluator.rescale_to_next_inplace(temp_rot1);
-            // cout << "temp_rot1 scale: " << temp_rot1.scale() << endl;
-            temp_rot1.scale() = scale;
-            evaluator.multiply_plain_inplace(temp_rot2, mat_Vkd);
-            evaluator.rescale_to_next_inplace(temp_rot2);
-            // cout << "temp_rot2 scale: " << temp_rot2.scale() << endl;
-            temp_rot2.scale() = scale;
-            evaluator.add(temp_rot1, temp_rot2, result);
-            break;
-        }
-        case 3:{
-            Plaintext mat_ones;
-            mat_ones = genOnes(d, scale, encoder);
-            evaluator.mod_switch_to_inplace(mat_ones, parms_id);
-            evaluator.rotate_vector(ct, d*k_m, gal_keys, result);
-            evaluator.multiply_plain_inplace(result, mat_ones);
-            evaluator.rescale_to_next_inplace(result);
-            // cout << "result scale: " << result.scale() << endl;
-            result.scale() = scale;
-            break;
-        }
-        default:{
-            cout << "Error: Wrong U_type value!" << endl;
-            break;
+        catch (const std::invalid_argument e) {
+            cout << "NaN found in file " << inputFileName << " line " << l
+                 << endl;
+            e.what();
         }
     }
-    return result;
+ 
+    if (!inputFile.eof()) {
+        cerr << "Could not read file " << inputFileName << "\n";
+        __throw_invalid_argument("File not found.");
+    }
+ 
+    return data;
 }
 
-//********************************************************************************
-// Matrix multiplication functions
-//********************************************************************************
-inline Ciphertext mat_mult(Ciphertext ct_a, Ciphertext ct_b, int d, double scale, 
-    CKKSEncoder &encoder, Evaluator &evaluator, const GaloisKeys &gal_keys, const RelinKeys &relin_keys, 
-    parms_id_type *parms_ids)
-{
-    Ciphertext ct_a0, ct_b0;
+inline vector<Ciphertext> wma(const vector<Ciphertext>& s, int n, CKKSEncoder &encoder, 
+    Encryptor &encryptor, Evaluator &evaluator, double scale) {
+    vector<Ciphertext> wma;
+    vector<Plaintext> weights;
 
-    ct_a0 = linear_tran(ct_a, d, 0, 0, scale, encoder, evaluator, gal_keys, parms_ids[0]);
-    ct_b0 = linear_tran(ct_b, d, 1, 0, scale, encoder, evaluator, gal_keys, parms_ids[0]);
-
-    int i = 0;
-    Ciphertext ab_ls[d];
-    evaluator.multiply(ct_a0, ct_b0, ab_ls[i]);
-    evaluator.relinearize_inplace(ab_ls[i], relin_keys);
-    evaluator.rescale_to_next_inplace(ab_ls[i]);
-    // cout << "ab_ls[i] scale: " << ab_ls[i].scale() << endl;
-    ab_ls[i].scale() = scale;
-    evaluator.mod_switch_to_inplace(ab_ls[i], parms_ids[3]);
-    i++;
-
-    for (int k = 1; k < d; k++){
-        Ciphertext ct_ak, ct_bk, temp_mult;
-        
-        ct_ak = linear_tran(ct_a0, d, 2, k, scale, encoder, evaluator, gal_keys, parms_ids[1]);
-        ct_bk = linear_tran(ct_b0, d, 3, k, scale, encoder, evaluator, gal_keys, parms_ids[1]);
-        evaluator.multiply(ct_ak, ct_bk, temp_mult);
-        evaluator.relinearize_inplace(temp_mult, relin_keys);
-        evaluator.rescale_to_next_inplace(temp_mult);
-        // cout << "temp_mult scale: " << temp_mult.scale() << endl;
-        temp_mult.scale() = scale;
-        evaluator.mod_switch_to_inplace(temp_mult, parms_ids[3]);
-        evaluator.add(ab_ls[i-1], temp_mult, ab_ls[i]);
-        i++;
+    // generate a list of weights of the window size
+    for (int i = 0; i < n; i++) {
+        vector<double> w;
+        Plaintext w_plain;
+        w.push_back(2*(i+1)/(n*(n+1)));
+        encoder.encode(w, scale, w_plain);
+        weights.push_back(w_plain);
     }
 
-    return ab_ls[i-1];
-}
+    // multiply corresponding data points and weights to get WMA
+    for (int i = 0; i < s.size()-n; i++) {
+        vector<Ciphertext> s_sliced;
+        s_sliced = slice(s, i, i+n);
 
-// rmat_mult can only be applied when matrix size equals to ciphertext vector
-inline Ciphertext rmat_mult(Ciphertext ct_a, Ciphertext ct_b, int d, int l, double scale, 
-    CKKSEncoder &encoder, Evaluator &evaluator, const GaloisKeys &gal_keys, const RelinKeys &relin_keys, 
-    parms_id_type *parms_ids)
-{
-    Ciphertext ct_a0, ct_b0;
+        for (int j = 0; j < n; j++) {
+            evaluator.multiply_plain_inplace(s_sliced[j], weights[j]);
+            evaluator.rescale_to_next_inplace(s_sliced[j]);
+        }
 
-    ct_a0 = linear_tran(ct_a, d, 0, 0, scale, encoder, evaluator, gal_keys, parms_ids[0]);
-    ct_b0 = linear_tran(ct_b, d, 1, 0, scale, encoder, evaluator, gal_keys, parms_ids[0]);
-
-    int i = 0;
-    Ciphertext ab_ls[d];
-    evaluator.multiply(ct_a0, ct_b0, ab_ls[i]);
-    evaluator.relinearize_inplace(ab_ls[i], relin_keys);
-    evaluator.rescale_to_next_inplace(ab_ls[i]);
-    // cout << "ab_ls[i] scale: " << ab_ls[i].scale() << endl;
-    ab_ls[i].scale() = scale;
-    evaluator.mod_switch_to_inplace(ab_ls[i], parms_ids[3]);
-    i++;
-
-    for (int k = 1; k < l; k++){
-        Ciphertext ct_ak, ct_bk, temp_mult;
-        
-        ct_ak = linear_tran(ct_a0, d, 2, k, scale, encoder, evaluator, gal_keys, parms_ids[1]);
-        ct_bk = linear_tran(ct_b0, d, 3, k, scale, encoder, evaluator, gal_keys, parms_ids[1]);
-        evaluator.multiply(ct_ak, ct_bk, temp_mult);
-        evaluator.relinearize_inplace(temp_mult, relin_keys);
-        evaluator.rescale_to_next_inplace(temp_mult);
-        // cout << "temp_mult scale: " << temp_mult.scale() << endl;
-        temp_mult.scale() = scale;
-        evaluator.mod_switch_to_inplace(temp_mult, parms_ids[3]);
-        evaluator.add(ab_ls[i-1], temp_mult, ab_ls[i]);
-        i++;
+        wma.push_back(sum(s_sliced, encoder, encryptor, evaluator, scale));
     }
-
-    Ciphertext ab;
-    ab = ab_ls[i-1];
-    for (int k = 0; k < ceil(log2(d/l)); k++){
-        Ciphertext temp_rot;
-        evaluator.rotate_vector(ab, (l*d*pow(2, k)), gal_keys, temp_rot);
-        evaluator.add(ab_ls[i-1], temp_rot, ab_ls[i]);
-        i++;
-    }
-    cout << i << endl;
-    return ab_ls[i-1];
+    return wma;
 }
 
 //********************************************************************************
@@ -568,99 +374,38 @@ int main()
     }
 
     //////////////////////////////////////////////////////////////////////////////
-    // Matrix multiplication
+    // MACD
     //////////////////////////////////////////////////////////////////////////////
-    // Construct input matrices as vectors
-    int mat_d = 3;
-    int rmat_d = 1;
-    vector<double> input_a;
-    double elem_a = 0.0;
-    for (int i = 0; i < max_d*max_d; i++) {
-        if ((i%max_d < mat_d) && i < max_d*mat_d) {
-            input_a.push_back(elem_a);
-            elem_a++;
-        }
-        else{
-            input_a.push_back(0.0);
-        }
+    vector<double> prices = csv2vec("apple_prices.csv");
+
+    vector<Ciphertext> prices_encrypted;
+
+    for (int i = 0; i < prices.size(); i++) {
+        vector<double> val;
+        Plaintext val_plain;
+        Ciphertext val_encrypted;
+
+        val.push_back(prices[i]);
+        encoder.encode(val, scale, val_plain);
+        encryptor.encrypt(val_plain, val_encrypted);
+        prices_encrypted.push_back(val_encrypted);
     }
 
-    vector<double> input_ar;
-    for (int i = 0; i < max_d*max_d; i++) {
-        if ((i%max_d < mat_d) && i < max_d*mat_d) {
-            input_ar.push_back(i%max_d);
-        }
-        else{
-            input_ar.push_back(0.0);
-        }
+
+    vector<Ciphertext> wma12_encrypted;
+    wma12_encrypted = wma(prices_encrypted, 12, encoder, encryptor, evaluator, scale);
+    vector<double> wma12;
+    for (int i = 0; i < wma12_encrypted.size(); i++) {
+        vector<double> val;
+        Plaintext val_plain;
+        Ciphertext val_encrypted;
+
+        val_encrypted = wma12_encrypted[i];
+        decryptor.decrypt(val_encrypted, val_plain);
+        encoder.decode(val_plain, val);
+        wma12.push_back(val[0]);
     }
-
-    vector<double> input_b;
-    double elem_b = 0.0;
-    for (int i = 0; i < max_d*max_d; i++) {
-        if (i%max_d < mat_d && i < max_d*mat_d) {
-            input_b.push_back(elem_b);
-            elem_b++;
-        }
-        else{
-            input_b.push_back(0.0);
-        }
-    }
-
-    // Encode and encrypt input matrices
-    Plaintext a_plain, ar_plain, b_plain;
-    encoder.encode(input_a, scale, a_plain);
-    encoder.encode(input_ar, scale, ar_plain);
-    encoder.encode(input_b, scale, b_plain);
-    Ciphertext a_encrypted, ar_encrypted, b_encrypted;
-    encryptor.encrypt(a_plain, a_encrypted);
-    encryptor.encrypt(ar_plain, ar_encrypted);
-    encryptor.encrypt(b_plain, b_encrypted);
-    
-    // Calculate multiplication of input matrices and decrypt the result
-    Plaintext plain_mult_result, plain_rmult_result;
-    Ciphertext cipher_mult_result, cipher_rmult_result;
-
-    // cout << "scale: " << scale << endl;
-
-    // for (int i = 0; i < 4; i++) {
-    //     cout << "parms_ids_" << i <<": " << endl;
-    //     cout << parms_ids[i] << endl;
-    // }
-
-    // cout << "a_encyrpted scale: " << a_encrypted.scale() << endl;
-    // cout << "a_encyrpted parms_id: " << a_encrypted.parms_id() << endl;
-
-    cipher_mult_result = mat_mult(a_encrypted, b_encrypted, max_d, scale, encoder, evaluator, 
-    gal_keys, relin_keys, parms_ids);
-
-    // rmat_mult is not used because the matrix size does not equal to ciphertext size
-    cipher_rmult_result = mat_mult(ar_encrypted, b_encrypted, max_d, scale, encoder, evaluator, 
-    gal_keys, relin_keys, parms_ids);
-
-    // cipher_rmult_result = rmat_mult(ar_encrypted, b_encrypted, max_d, rmat_d, scale, encoder, evaluator, 
-    // gal_keys, relin_keys, parms_ids);
-
-    // cout << "cipher result scale: " << cipher_mult_result.scale() << endl;
-    // cout << "cipher result parms_id: " << cipher_mult_result.parms_id() << endl;
-
-    decryptor.decrypt(cipher_mult_result, plain_mult_result);
-    decryptor.decrypt(cipher_rmult_result, plain_rmult_result);
-    vector<double> mult_result;
-    vector<double> rmult_result;
-    encoder.decode(plain_mult_result, mult_result);
-    encoder.decode(plain_rmult_result, rmult_result);
-
-    cout << "Matrix A: " << endl;
-    print_vector(input_a, mat_d*max_d, 3);
-    cout << "Matrix B: " << endl;
-    print_vector(input_b, mat_d*max_d, 3);
-    cout << "Matrix AR: " << endl;
-    print_vector(input_ar, mat_d*max_d, 3);
-    cout << "A * B: " << endl;
-    print_vector(mult_result, mat_d*max_d, 3);
-    cout << "AR * B: " << endl;
-    print_vector(rmult_result, mat_d*max_d, 3);
+    print_vector(wma12);
 
     return 0;
 }
