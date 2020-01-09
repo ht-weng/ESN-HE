@@ -228,23 +228,18 @@ inline void print_line(int line_number)
 //////////////////////////////////////////////////////////////////////////////////
 // MACD helper functions
 //////////////////////////////////////////////////////////////////////////////////
-inline Ciphertext sum(const vector<Ciphertext>& v, CKKSEncoder &encoder, Encryptor &encryptor, 
+inline Ciphertext sum(vector<Ciphertext>& v, CKKSEncoder &encoder, Encryptor &encryptor, 
     Evaluator &evaluator, double scale) {
-    vector<double> result;
-    result.push_back(0);
-    Plaintext result_plain;
-    encoder.encode(result, scale, result_plain);
-    Ciphertext result_encrypted;
-    encryptor.encrypt(result_plain, result_encrypted);
+    Ciphertext result_encrypted = v[0];
 
-    for(int i=0; i < v.size(); i++) {
+    for(int i = 1; i < v.size(); i++) {
         Ciphertext val = v[i];
         evaluator.add_inplace(result_encrypted, val);
     }
     return result_encrypted;
 }
 
-inline vector<Ciphertext> slice(const vector<Ciphertext>& v, int start=0, int end=-1) {
+inline vector<Ciphertext> slice(vector<Ciphertext>& v, int start=0, int end=-1) {
     int oldlen = v.size();
     int newlen;
 
@@ -256,7 +251,7 @@ inline vector<Ciphertext> slice(const vector<Ciphertext>& v, int start=0, int en
 
     vector<Ciphertext> nv(newlen);
 
-    for (int i=0; i<newlen; i++) {
+    for (int i = 0; i < newlen; i++) {
         nv[i] = v[start+i];
     }
     return nv;
@@ -298,8 +293,8 @@ inline vector<double> csv2vec(string inputFileName) {
     return data;
 }
 
-inline vector<Ciphertext> wma(const vector<Ciphertext>& s, int n, CKKSEncoder &encoder, 
-    Encryptor &encryptor, Evaluator &evaluator, double scale) {
+inline vector<Ciphertext> wma(vector<Ciphertext>& s, int n, int level, CKKSEncoder &encoder, 
+    Encryptor &encryptor, Evaluator &evaluator, double scale, parms_id_type *parms_ids) {
     vector<Ciphertext> wma;
     vector<Plaintext> weights;
 
@@ -307,22 +302,28 @@ inline vector<Ciphertext> wma(const vector<Ciphertext>& s, int n, CKKSEncoder &e
     for (int i = 0; i < n; i++) {
         vector<double> w;
         Plaintext w_plain;
-        w.push_back(2*(i+1)/(n*(n+1)));
+        w.push_back(2.0*(i+1.0)/(n*(n+1.0)));
         encoder.encode(w, scale, w_plain);
         weights.push_back(w_plain);
     }
-
     // multiply corresponding data points and weights to get WMA
     for (int i = 0; i < s.size()-n; i++) {
         vector<Ciphertext> s_sliced;
+        vector<Ciphertext> window;
         s_sliced = slice(s, i, i+n);
 
         for (int j = 0; j < n; j++) {
-            evaluator.multiply_plain_inplace(s_sliced[j], weights[j]);
-            evaluator.rescale_to_next_inplace(s_sliced[j]);
+            Ciphertext tmp = s_sliced[j];
+            Plaintext tmp_weight = weights[j];
+            evaluator.mod_switch_to_inplace(tmp_weight, parms_ids[level]);
+            evaluator.multiply_plain_inplace(tmp, tmp_weight);
+            evaluator.rescale_to_next_inplace(tmp);
+            tmp.scale() = scale;
+            window.push_back(tmp);
         }
 
-        wma.push_back(sum(s_sliced, encoder, encryptor, evaluator, scale));
+        Ciphertext sumup = sum(window, encoder, encryptor, evaluator, scale);
+        wma.push_back(sumup);
     }
     return wma;
 }
@@ -391,21 +392,109 @@ int main()
         prices_encrypted.push_back(val_encrypted);
     }
 
-
     vector<Ciphertext> wma12_encrypted;
-    wma12_encrypted = wma(prices_encrypted, 12, encoder, encryptor, evaluator, scale);
+    wma12_encrypted = wma(prices_encrypted, 12, 0, encoder, encryptor, evaluator, scale, parms_ids);
+    vector<Ciphertext> wma12_encrypted_sliced = slice(wma12_encrypted, 14, wma12_encrypted.size());
+
+    vector<Ciphertext> wma26_encrypted;
+    wma26_encrypted = wma(prices_encrypted, 26, 0, encoder, encryptor, evaluator, scale, parms_ids);
+    
+    vector<Ciphertext> wma_diff_encrypted;
+    for (int i = 0; i < wma26_encrypted.size(); i++) {
+        Ciphertext tmp_diff;
+        evaluator.sub(wma12_encrypted_sliced[i], wma26_encrypted[i], tmp_diff);
+        wma_diff_encrypted.push_back(tmp_diff);
+    }
+
+    vector<Ciphertext> wma9_encrypted;
+    wma9_encrypted = wma(wma_diff_encrypted, 9, 1, encoder, encryptor, evaluator, scale, parms_ids);
+
+    vector<Ciphertext> wma_diff_sliced = slice(wma_diff_encrypted, 9, wma_diff_encrypted.size());
+
+    vector<Ciphertext> macd_encrypted;
+    for (int i = 0; i < wma9_encrypted.size(); i++) {
+        Ciphertext tmp_diff, tmp_macd;
+        tmp_diff = wma_diff_sliced[i];
+        evaluator.mod_switch_to_inplace(tmp_diff, parms_ids[2]);
+        evaluator.sub(tmp_diff, wma9_encrypted[i], tmp_macd);
+        macd_encrypted.push_back(tmp_macd);
+    }
+
     vector<double> wma12;
-    for (int i = 0; i < wma12_encrypted.size(); i++) {
+    for (int i = 0; i < wma12_encrypted_sliced.size(); i++) {
         vector<double> val;
         Plaintext val_plain;
         Ciphertext val_encrypted;
-
-        val_encrypted = wma12_encrypted[i];
+        val_encrypted = wma12_encrypted_sliced[i];
         decryptor.decrypt(val_encrypted, val_plain);
         encoder.decode(val_plain, val);
         wma12.push_back(val[0]);
     }
-    print_vector(wma12);
+
+    vector<double> wma26;
+    for (int i = 0; i < wma26_encrypted.size(); i++) {
+        vector<double> val;
+        Plaintext val_plain;
+        Ciphertext val_encrypted;
+        val_encrypted = wma26_encrypted[i];
+        decryptor.decrypt(val_encrypted, val_plain);
+        encoder.decode(val_plain, val);
+        wma26.push_back(val[0]);
+    }
+
+    vector<double> wma_diff;
+    for (int i = 0; i < wma_diff_sliced.size(); i++) {
+        vector<double> val;
+        Plaintext val_plain;
+        Ciphertext val_encrypted;
+        val_encrypted = wma_diff_sliced[i];
+        decryptor.decrypt(val_encrypted, val_plain);
+        encoder.decode(val_plain, val);
+        wma_diff.push_back(val[0]);
+    }
+
+    vector<double> wma9;
+    for (int i = 0; i < wma9_encrypted.size(); i++) {
+        vector<double> val;
+        Plaintext val_plain;
+        Ciphertext val_encrypted;
+        val_encrypted = wma9_encrypted[i];
+        decryptor.decrypt(val_encrypted, val_plain);
+        encoder.decode(val_plain, val);
+        wma9.push_back(val[0]);
+    }
+
+    vector<double> macd;
+    for (int i = 0; i < macd_encrypted.size(); i++) {
+        vector<double> val;
+        Plaintext val_plain;
+        Ciphertext val_encrypted;
+        val_encrypted = macd_encrypted[i];
+        decryptor.decrypt(val_encrypted, val_plain);
+        encoder.decode(val_plain, val);
+        macd.push_back(val[0]);
+    }
+    
+    // write data to csv for plotting
+    ofstream output_file1("macd_seal.csv");
+    ostream_iterator<double> output_iterator1(output_file1, "\n");
+    copy(macd.begin(), macd.end(), output_iterator1);
+
+    ofstream output_file2("wma12_seal.csv");
+    ostream_iterator<double> output_iterator2(output_file2, "\n");
+    copy(wma12.begin(), wma12.end(), output_iterator2);
+
+    ofstream output_file3("wma26_seal.csv");
+    ostream_iterator<double> output_iterator3(output_file3, "\n");
+    copy(wma26.begin(), wma26.end(), output_iterator3);
+
+    ofstream output_file4("wma_diff_seal.csv");
+    ostream_iterator<double> output_iterator4(output_file4, "\n");
+    copy(wma_diff.begin(), wma_diff.end(), output_iterator4);
+
+    ofstream output_file5("wma9_seal.csv");
+    ostream_iterator<double> output_iterator5(output_file5, "\n");
+    copy(wma9.begin(), wma9.end(), output_iterator5);
 
     return 0;
 }
