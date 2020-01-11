@@ -328,6 +328,21 @@ inline vector<Ciphertext> wma(vector<Ciphertext>& s, int n, int level, CKKSEncod
     return wma;
 }
 
+inline Ciphertext getSample(int time, int scale, CKKSEncoder &encoder, Encryptor &encryptor) {
+    vector<double> prices = csv2vec("apple_prices.csv");
+    vector<double> sample;
+    Plaintext sample_plain;
+    Ciphertext sample_encrypted;
+    sample.push_back(prices[time]);
+    encoder.encode(sample, scale, sample_plain);
+    encryptor.encrypt(sample_plain, sample_encrypted);
+    return sample_encrypted;
+}
+
+inline void assembleSample(Ciphertext sample, vector<Ciphertext>& past_prices) {
+    past_prices.push_back(sample);
+}
+
 //********************************************************************************
 // Main function
 //********************************************************************************
@@ -339,10 +354,13 @@ int main()
     // Set up the CKKS scheme.
     EncryptionParameters parms(scheme_type::CKKS);
     size_t poly_modulus_degree = 8192;
+    // size_t poly_modulus_degree = 16384;
     parms.set_poly_modulus_degree(poly_modulus_degree);
-    parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, { 40, 30, 30, 30, 40 }));
-    double scale = pow(2.0, 30);
-    int max_d = 64;
+    parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, { 30, 25, 25, 25, 25, 25, 25, 30 }));
+    // parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, { 40, 30, 30, 30, 30, 30, 30, 30, 30, 
+    //     30, 30, 30, 40 }));
+    double scale = pow(2.0, 25);
+    int max_level = 8;
 
     // Set up Context
     auto context = SEALContext::Create(parms);
@@ -365,7 +383,7 @@ int main()
 
     // Construct an array of parameters ids
     int p_i = 0;
-    parms_id_type parms_ids[4];
+    parms_id_type parms_ids[max_level];
     auto context_data = context->first_context_data();
     while (context_data)
     {
@@ -375,23 +393,19 @@ int main()
     }
 
     //////////////////////////////////////////////////////////////////////////////
-    // MACD
+    // Simulation of Receiving Data From Client
     //////////////////////////////////////////////////////////////////////////////
-    vector<double> prices = csv2vec("apple_prices.csv");
+    int time_max = 500;
 
     vector<Ciphertext> prices_encrypted;
-
-    for (int i = 0; i < prices.size(); i++) {
-        vector<double> val;
-        Plaintext val_plain;
-        Ciphertext val_encrypted;
-
-        val.push_back(prices[i]);
-        encoder.encode(val, scale, val_plain);
-        encryptor.encrypt(val_plain, val_encrypted);
-        prices_encrypted.push_back(val_encrypted);
+    for (int i = 0; i < time_max; i++) {
+        Ciphertext sample = getSample(i, scale, encoder, encryptor);
+        assembleSample(sample, prices_encrypted);
     }
 
+    //////////////////////////////////////////////////////////////////////////////
+    // MACD
+    //////////////////////////////////////////////////////////////////////////////
     vector<Ciphertext> wma12_encrypted;
     wma12_encrypted = wma(prices_encrypted, 12, 0, encoder, encryptor, evaluator, scale, parms_ids);
     vector<Ciphertext> wma12_encrypted_sliced = slice(wma12_encrypted, 14, wma12_encrypted.size());
@@ -420,81 +434,185 @@ int main()
         macd_encrypted.push_back(tmp_macd);
     }
 
-    vector<double> wma12;
-    for (int i = 0; i < wma12_encrypted_sliced.size(); i++) {
-        vector<double> val;
-        Plaintext val_plain;
-        Ciphertext val_encrypted;
-        val_encrypted = wma12_encrypted_sliced[i];
-        decryptor.decrypt(val_encrypted, val_plain);
-        encoder.decode(val_plain, val);
-        wma12.push_back(val[0]);
-    }
-
-    vector<double> wma26;
-    for (int i = 0; i < wma26_encrypted.size(); i++) {
-        vector<double> val;
-        Plaintext val_plain;
-        Ciphertext val_encrypted;
-        val_encrypted = wma26_encrypted[i];
-        decryptor.decrypt(val_encrypted, val_plain);
-        encoder.decode(val_plain, val);
-        wma26.push_back(val[0]);
-    }
-
-    vector<double> wma_diff;
-    for (int i = 0; i < wma_diff_sliced.size(); i++) {
-        vector<double> val;
-        Plaintext val_plain;
-        Ciphertext val_encrypted;
-        val_encrypted = wma_diff_sliced[i];
-        decryptor.decrypt(val_encrypted, val_plain);
-        encoder.decode(val_plain, val);
-        wma_diff.push_back(val[0]);
-    }
-
-    vector<double> wma9;
-    for (int i = 0; i < wma9_encrypted.size(); i++) {
-        vector<double> val;
-        Plaintext val_plain;
-        Ciphertext val_encrypted;
-        val_encrypted = wma9_encrypted[i];
-        decryptor.decrypt(val_encrypted, val_plain);
-        encoder.decode(val_plain, val);
-        wma9.push_back(val[0]);
-    }
-
-    vector<double> macd;
+    //////////////////////////////////////////////////////////////////////////////
+    // tanh
+    //////////////////////////////////////////////////////////////////////////////
+    // macd_encrypted is at level 3
+    vector<Ciphertext> tanh_encrypted;
     for (int i = 0; i < macd_encrypted.size(); i++) {
+        // Set up coefficients
+        Plaintext coeff1_plain, coeff2_plain, coeff3_plain;
+        encoder.encode(0.375, scale, coeff1_plain);
+        encoder.encode((-1.25), scale, coeff2_plain);
+        encoder.encode(1.875, scale, coeff3_plain);
+
+        Ciphertext x_encrypted = macd_encrypted[i];
+
+        // Calculate x^2, which is at level 1
+        Ciphertext x2_encrypted;
+        evaluator.square(x_encrypted, x2_encrypted);
+        evaluator.relinearize_inplace(x2_encrypted, relin_keys);
+        evaluator.rescale_to_next_inplace(x2_encrypted);
+        x2_encrypted.scale() = scale;
+
+        cout << "0" << endl;
+
+        // Calculate x^3, which is at level 2
+        Ciphertext x3_encrypted;
+        // Switch mod to ensure parameters id match
+        evaluator.mod_switch_to_inplace(x_encrypted, parms_ids[3]);
+        evaluator.multiply(x_encrypted, x2_encrypted, x3_encrypted);
+        evaluator.relinearize_inplace(x3_encrypted, relin_keys);
+        evaluator.rescale_to_next_inplace(x3_encrypted);
+        x3_encrypted.scale() = scale;
+
+        cout << "1" << endl;
+
+        // Calculate x^5, which is at level 3
+        Ciphertext x5_encrypted;
+        // Switch mod to ensure parameters id match
+        evaluator.mod_switch_to_inplace(x2_encrypted, parms_ids[4]);
+        evaluator.multiply(x2_encrypted, x3_encrypted, x5_encrypted);
+        evaluator.relinearize_inplace(x5_encrypted, relin_keys);
+        evaluator.rescale_to_next_inplace(x5_encrypted);
+        x5_encrypted.scale() = scale;
+
+        cout << "2" << endl;
+
+        // Calculate 0.375*x^5, which is at level 4
+        // Switch mod to ensure parameters id match
+        evaluator.mod_switch_to_inplace(coeff1_plain, parms_ids[5]);
+        evaluator.multiply_plain_inplace(x5_encrypted, coeff1_plain);
+        evaluator.rescale_to_next_inplace(x5_encrypted);
+        x5_encrypted.scale() = scale;
+
+        cout << "3" << endl;
+
+        // Calculate -1.25*x^3, which is at level 3
+        // Switch mod to ensure parameters id match
+        evaluator.mod_switch_to_inplace(coeff2_plain, parms_ids[4]);
+        evaluator.multiply_plain_inplace(x3_encrypted, coeff2_plain);
+        evaluator.rescale_to_next_inplace(x3_encrypted);
+        x3_encrypted.scale() = scale;
+
+        cout << "4" << endl;
+
+        // Calculate 1.875*x, which is at level 2
+        // Switch mod to ensure parameters id match
+        // Note that previously we haved switched x_encrypted' level to 1
+        evaluator.mod_switch_to_inplace(coeff3_plain, parms_ids[3]);
+        evaluator.multiply_plain_inplace(x_encrypted, coeff3_plain);
+        evaluator.rescale_to_next_inplace(x_encrypted);
+        x_encrypted.scale() = scale;
+
+        cout << "5" << endl;
+
+        // To do the addition, we have to ensure that the terms have same parms_id and scale
+        evaluator.mod_switch_to_inplace(x3_encrypted, parms_ids[6]);
+        evaluator.mod_switch_to_inplace(x_encrypted, parms_ids[6]);
+
+        Ciphertext result_encrypted;
+        evaluator.add(x5_encrypted, x3_encrypted, result_encrypted);
+        evaluator.add_inplace(result_encrypted, x_encrypted);
+
+        cout << "6" << endl;
+
+        tanh_encrypted.push_back(result_encrypted);
+    }
+
+    vector<double> tanh;
+    for (int i = 0; i < tanh_encrypted.size(); i++) {
         vector<double> val;
         Plaintext val_plain;
         Ciphertext val_encrypted;
-        val_encrypted = macd_encrypted[i];
+        val_encrypted = tanh_encrypted[i];
         decryptor.decrypt(val_encrypted, val_plain);
         encoder.decode(val_plain, val);
-        macd.push_back(val[0]);
+        tanh.push_back(val[0]);
     }
+
+    print_vector(tanh, 500);
     
-    // write data to csv for plotting
-    ofstream output_file1("macd_seal.csv");
-    ostream_iterator<double> output_iterator1(output_file1, "\n");
-    copy(macd.begin(), macd.end(), output_iterator1);
+    //////////////////////////////////////////////////////////////////////////////
+    // Decrypt and output data
+    //////////////////////////////////////////////////////////////////////////////
+    // vector<double> wma12;
+    // for (int i = 0; i < wma12_encrypted_sliced.size(); i++) {
+    //     vector<double> val;
+    //     Plaintext val_plain;
+    //     Ciphertext val_encrypted;
+    //     val_encrypted = wma12_encrypted_sliced[i];
+    //     decryptor.decrypt(val_encrypted, val_plain);
+    //     encoder.decode(val_plain, val);
+    //     wma12.push_back(val[0]);
+    // }
 
-    ofstream output_file2("wma12_seal.csv");
-    ostream_iterator<double> output_iterator2(output_file2, "\n");
-    copy(wma12.begin(), wma12.end(), output_iterator2);
+    // vector<double> wma26;
+    // for (int i = 0; i < wma26_encrypted.size(); i++) {
+    //     vector<double> val;
+    //     Plaintext val_plain;
+    //     Ciphertext val_encrypted;
+    //     val_encrypted = wma26_encrypted[i];
+    //     decryptor.decrypt(val_encrypted, val_plain);
+    //     encoder.decode(val_plain, val);
+    //     wma26.push_back(val[0]);
+    // }
 
-    ofstream output_file3("wma26_seal.csv");
-    ostream_iterator<double> output_iterator3(output_file3, "\n");
-    copy(wma26.begin(), wma26.end(), output_iterator3);
+    // vector<double> wma_diff;
+    // for (int i = 0; i < wma_diff_sliced.size(); i++) {
+    //     vector<double> val;
+    //     Plaintext val_plain;
+    //     Ciphertext val_encrypted;
+    //     val_encrypted = wma_diff_sliced[i];
+    //     decryptor.decrypt(val_encrypted, val_plain);
+    //     encoder.decode(val_plain, val);
+    //     wma_diff.push_back(val[0]);
+    // }
 
-    ofstream output_file4("wma_diff_seal.csv");
-    ostream_iterator<double> output_iterator4(output_file4, "\n");
-    copy(wma_diff.begin(), wma_diff.end(), output_iterator4);
+    // vector<double> wma9;
+    // for (int i = 0; i < wma9_encrypted.size(); i++) {
+    //     vector<double> val;
+    //     Plaintext val_plain;
+    //     Ciphertext val_encrypted;
+    //     val_encrypted = wma9_encrypted[i];
+    //     decryptor.decrypt(val_encrypted, val_plain);
+    //     encoder.decode(val_plain, val);
+    //     wma9.push_back(val[0]);
+    // }
 
-    ofstream output_file5("wma9_seal.csv");
-    ostream_iterator<double> output_iterator5(output_file5, "\n");
-    copy(wma9.begin(), wma9.end(), output_iterator5);
+    // vector<double> macd;
+    // for (int i = 0; i < macd_encrypted.size(); i++) {
+    //     vector<double> val;
+    //     Plaintext val_plain;
+    //     Ciphertext val_encrypted;
+    //     val_encrypted = macd_encrypted[i];
+    //     decryptor.decrypt(val_encrypted, val_plain);
+    //     encoder.decode(val_plain, val);
+    //     macd.push_back(val[0]);
+    // }
+    
+    // // write data to csv for plotting
+    // ofstream output_file1("macd_seal.csv");
+    // ostream_iterator<double> output_iterator1(output_file1, "\n");
+    // copy(macd.begin(), macd.end(), output_iterator1);
+
+    // ofstream output_file2("wma12_seal.csv");
+    // ostream_iterator<double> output_iterator2(output_file2, "\n");
+    // copy(wma12.begin(), wma12.end(), output_iterator2);
+
+    // ofstream output_file3("wma26_seal.csv");
+    // ostream_iterator<double> output_iterator3(output_file3, "\n");
+    // copy(wma26.begin(), wma26.end(), output_iterator3);
+
+    // ofstream output_file4("wma_diff_seal.csv");
+    // ostream_iterator<double> output_iterator4(output_file4, "\n");
+    // copy(wma_diff.begin(), wma_diff.end(), output_iterator4);
+
+    // ofstream output_file5("wma9_seal.csv");
+    // ostream_iterator<double> output_iterator5(output_file5, "\n");
+    // copy(wma9.begin(), wma9.end(), output_iterator5);
+
+    cout << "MACD Analysis Done" << endl;
 
     return 0;
 }
