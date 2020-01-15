@@ -249,10 +249,10 @@ inline vector<Ciphertext> slice(vector<Ciphertext>& v, int start=0, int end=-1) 
         newlen = end-start;
     }
 
-    vector<Ciphertext> nv(newlen);
+    vector<Ciphertext> nv;
 
     for (int i = 0; i < newlen; i++) {
-        nv[i] = v[start+i];
+        nv.push_back(v[start+i]);
     }
     return nv;
 }
@@ -473,7 +473,6 @@ int main()
         evaluator.rescale_to_next_inplace(mt_1);
         mt_1.scale() = scale;
 
-
         Ciphertext recent_diff;
         evaluator.sub(mt, mt_1, recent_diff);
         Ciphertext recent_mult;
@@ -484,10 +483,13 @@ int main()
         recent_mult.scale() = scale;
 
         // Set up coefficients
-        Plaintext coeff1_plain, coeff2_plain, coeff3_plain;
+        Plaintext coeff1_plain, coeff2_plain, coeff3_plain, offset_plain;
+        Ciphertext offset_encrypted;
         encoder.encode(0.375, scale, coeff1_plain);
         encoder.encode((-1.25), scale, coeff2_plain);
         encoder.encode(1.875, scale, coeff3_plain);
+        encoder.encode(1.0, scale, offset_plain);
+        encryptor.encrypt(offset_plain, offset_encrypted);
 
         // Calculate x^2, which is at level 5
         Ciphertext x2_encrypted;
@@ -543,10 +545,12 @@ int main()
         // To do the addition, we have to ensure that the terms have same parms_id and scale
         evaluator.mod_switch_to_inplace(x3_encrypted, parms_ids[8]);
         evaluator.mod_switch_to_inplace(recent_mult, parms_ids[8]);
+        evaluator.mod_switch_to_inplace(offset_encrypted, parms_ids[8]);
 
         Ciphertext sign_encrypted;
         evaluator.add(x5_encrypted, x3_encrypted, sign_encrypted);
         evaluator.add_inplace(sign_encrypted, recent_mult);
+        evaluator.add_inplace(sign_encrypted, offset_encrypted);
 
         Ciphertext result_encrypted;
         evaluator.mod_switch_to_inplace(recent_diff, parms_ids[8]);
@@ -735,7 +739,7 @@ int main()
     ostream_iterator<double> output_iterator5(output_file5, "\n");
     copy(wma9.begin(), wma9.end(), output_iterator5);
 
-    ofstream output_file6("decisions_macd.csv");
+    ofstream output_file6("decisions_seal.csv");
     ostream_iterator<double> output_iterator6(output_file6, "\n");
     copy(decisions.begin(), decisions.end(), output_iterator6);
 

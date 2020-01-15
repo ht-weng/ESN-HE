@@ -4,6 +4,8 @@
         "iostream": "cpp",
         "__split_buffer": "cpp",
         "deque": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "complex": "cpp",
+        "random": "cpp"
     }
 }
