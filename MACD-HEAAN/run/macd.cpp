@@ -57,7 +57,7 @@ inline vector<double> csv2vec(string inputFileName) {
     return data;
 }
 
-inline void printVector(const vector<double>& v) {
+inline void printVector(vector<double>& v) {
     for(int i=0; i < v.size(); i++) {
         cout << v[i] << ' ';
     }
@@ -122,7 +122,8 @@ inline vector<Ciphertext> wma(vector<Ciphertext>& s, int m, Scheme &scheme, long
         vector<Ciphertext> window;
         s_sliced = slice(s, i, i+m);
         for (int j = 0; j < m; j++) {
-			Ciphertext tmp = s_sliced[j];
+			Ciphertext tmp;
+            tmp.copy(s_sliced[j]);
             complex<double> tmp_weight;
 			tmp_weight.real(weights[j]);
             // scheme.modDownToAndEqual();
@@ -135,6 +136,19 @@ inline vector<Ciphertext> wma(vector<Ciphertext>& s, int m, Scheme &scheme, long
         wma.push_back(sumup);
     }
     return wma;
+}
+
+inline void decryptCipherVec(vector<Ciphertext>& v, Scheme &scheme, SecretKey &secretKey) {
+    // vector<double> res;
+    for (int i = 0; i < v.size(); i++) {
+        complex<double> val;
+        Ciphertext val_encrypted;
+        val_encrypted = v[i];
+        val = scheme.decryptSingle(secretKey, val_encrypted);
+        cout << val << endl;
+        // res.push_back(real(val));
+    }
+    // return res;
 }
 
 int main() {
@@ -204,13 +218,15 @@ int main() {
 	// cout << "\n";
 
 	vector<double> wma12;
-    for (int i = 0; i < wma12_encrypted.size(); i++) {
-        complex<double> val;
-        Ciphertext val_encrypted;
-        val_encrypted = wma12_encrypted[i];
-        val = scheme.decryptSingle(secretKey, val_encrypted);
-        wma12.push_back(real(val));
-    }
+    decryptCipherVec(wma12_encrypted, scheme, secretKey);
+    
+    // for (int i = 0; i < wma12_encrypted.size(); i++) {
+    //     complex<double> val;
+    //     Ciphertext val_encrypted;
+    //     val_encrypted = wma12_encrypted[i];
+    //     val = scheme.decryptSingle(secretKey, val_encrypted);
+    //     wma12.push_back(real(val));
+    // }
 
 	// cout << "wma12 exported" << endl;
 
@@ -259,7 +275,7 @@ int main() {
 
 	// cout << "macd exported" << endl;
 
-	printVector(wma12);
+	// printVector(wma12);
 	// printVector(wma26);
 	// printVector(wma_diff);
 	// printVector(macd);
