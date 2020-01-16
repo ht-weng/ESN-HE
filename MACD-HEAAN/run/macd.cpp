@@ -48,12 +48,12 @@ inline vector<double> csv2vec(string inputFileName) {
             e.what();
         }
     }
- 
+
     if (!inputFile.eof()) {
         cerr << "Could not read file " << inputFileName << "\n";
         __throw_invalid_argument("File not found.");
     }
- 
+
     return data;
 }
 
@@ -62,13 +62,6 @@ inline void printVector(const vector<double>& v) {
         cout << v[i] << ' ';
     }
     cout << "\n";
-}
-
-inline void printArray(complex<double>* data, int size) {
-	for (int i = 0; i < size; i++) {
-		cout << real(data[i]) << " " << endl;
-	}
-	cout << "\n";
 }
 
 inline Ciphertext sum(vector<Ciphertext>& v, Scheme &scheme) {
@@ -103,7 +96,6 @@ inline Ciphertext getSample(int time, long logq, long logp, long logn, Scheme &s
 	vector<double> prices;
 	prices = csv2vec("apple_prices.csv");
 
-	long n = pow(2, logn);
     complex<double> sample;
 	sample.real(prices[time]);
 
@@ -119,7 +111,6 @@ inline void assembleSample(Ciphertext sample, vector<Ciphertext>& past_prices) {
 inline vector<Ciphertext> wma(vector<Ciphertext>& s, int m, Scheme &scheme, long logq, long logp, long logn) {
     vector<Ciphertext> wma;
     vector<double> weights;
-	long n = pow(2, logn);
     // generate a list of weights of the window size
     for (int i = 0; i < m; i++) {
         double w = (2.0*(i+1.0)/(m*(m+1.0)));
@@ -134,8 +125,9 @@ inline vector<Ciphertext> wma(vector<Ciphertext>& s, int m, Scheme &scheme, long
 			Ciphertext tmp = s_sliced[j];
             complex<double> tmp_weight;
 			tmp_weight.real(weights[j]);
+            // scheme.modDownToAndEqual();
             scheme.multByConstAndEqual(tmp, tmp_weight, logp);
-			scheme.reScaleByAndEqual(tmp, logq);
+			scheme.reScaleByAndEqual(tmp, logp);
 			
             window.push_back(tmp);
         }
@@ -143,64 +135,6 @@ inline vector<Ciphertext> wma(vector<Ciphertext>& s, int m, Scheme &scheme, long
         wma.push_back(sumup);
     }
     return wma;
-}
-
-inline void testBootstrap(long logq, long logp, long logSlots, long logT) {
-	cout << "!!! START TEST BOOTSTRAP !!!" << endl;
-
-	srand(time(NULL));
-	SetNumThreads(8);
-	TimeUtils timeutils;
-	Ring ring;
-	SecretKey secretKey(ring);
-	Scheme scheme(secretKey, ring);
-
-	timeutils.start("Key generating");
-	scheme.addBootKey(secretKey, logSlots, logq + 4);
-	timeutils.stop("Key generated");
-
-	long slots = (1 << logSlots);
-	complex<double>* mvec = EvaluatorUtils::randomComplexArray(slots);
-
-	Ciphertext cipher;
-	scheme.encrypt(cipher, mvec, slots, logp, logq);
-
-	cout << "cipher logq before: " << cipher.logq << endl;
-
-	scheme.modDownToAndEqual(cipher, logq);
-	scheme.normalizeAndEqual(cipher);
-	cipher.logq = logQ;
-	cipher.logp = logq + 4;
-
-	Ciphertext rot;
-	timeutils.start("SubSum");
-	for (long i = logSlots; i < logNh; ++i) {
-		scheme.leftRotateFast(rot, cipher, (1 << i));
-		scheme.addAndEqual(cipher, rot);
-	}
-	scheme.divByPo2AndEqual(cipher, logNh);
-	timeutils.stop("SubSum");
-
-	timeutils.start("CoeffToSlot");
-	scheme.coeffToSlotAndEqual(cipher);
-	timeutils.stop("CoeffToSlot");
-
-	timeutils.start("EvalExp");
-	scheme.evalExpAndEqual(cipher, logT);
-	timeutils.stop("EvalExp");
-
-	timeutils.start("SlotToCoeff");
-	scheme.slotToCoeffAndEqual(cipher);
-	timeutils.stop("SlotToCoeff");
-
-	cipher.logp = logp;
-	cout << "cipher logq after: " << cipher.logq << endl;
-
-	complex<double>* dvec = scheme.decrypt(secretKey, cipher);
-
-	StringUtils::compare(mvec, dvec, slots, "boot");
-
-	cout << "!!! END TEST BOOTSRTAP !!!" << endl;
 }
 
 int main() {
@@ -232,75 +166,75 @@ int main() {
 	cout << "\n";
 
 	vector<Ciphertext> wma12_encrypted = wma(prices_encrypted, 12, scheme, logq, logp, logn);
-	vector<Ciphertext> wma12_encrypted_sliced = slice(wma12_encrypted, 14, wma12_encrypted.size());
+	// vector<Ciphertext> wma12_encrypted_sliced = slice(wma12_encrypted, 14, wma12_encrypted.size());
 
 	cout << "wma12 done" << endl;
 
-	vector<Ciphertext> wma26_encrypted;
-    wma26_encrypted = wma(prices_encrypted, 26, scheme, logq, logp, logn);
+	// vector<Ciphertext> wma26_encrypted;
+    // wma26_encrypted = wma(prices_encrypted, 26, scheme, logq, logp, logn);
 
-	cout << "wma26 done" << endl;
+	// cout << "wma26 done" << endl;
 
-	vector<Ciphertext> wma_diff_encrypted;
-    for (int i = 0; i < wma26_encrypted.size(); i++) {
-        Ciphertext tmp_diff;
-        scheme.sub(tmp_diff, wma12_encrypted_sliced[i], wma26_encrypted[i]);
-        wma_diff_encrypted.push_back(tmp_diff);
-    }
+	// vector<Ciphertext> wma_diff_encrypted;
+    // for (int i = 0; i < wma26_encrypted.size(); i++) {
+    //     Ciphertext tmp_diff;
+    //     scheme.sub(tmp_diff, wma12_encrypted_sliced[i], wma26_encrypted[i]);
+    //     wma_diff_encrypted.push_back(tmp_diff);
+    // }
 
-	cout << "wma diff done" << endl;
+	// cout << "wma diff done" << endl;
 
-    vector<Ciphertext> wma9_encrypted;
-    wma9_encrypted = wma(wma_diff_encrypted, 9, scheme, logq, logp, logn);
+    // vector<Ciphertext> wma9_encrypted;
+    // wma9_encrypted = wma(wma_diff_encrypted, 9, scheme, logq, logp, logn);
 
-	cout << "wma9 done" << endl;
+	// cout << "wma9 done" << endl;
 
-    vector<Ciphertext> wma_diff_sliced = slice(wma_diff_encrypted, 9, wma_diff_encrypted.size());
+    // vector<Ciphertext> wma_diff_sliced = slice(wma_diff_encrypted, 9, wma_diff_encrypted.size());
 
-    vector<Ciphertext> macd_encrypted;
-    for (int i = 0; i < wma9_encrypted.size(); i++) {
-        Ciphertext tmp_macd;
-        scheme.sub(tmp_macd, wma_diff_sliced[i], wma9_encrypted[i]);
-        macd_encrypted.push_back(tmp_macd);
-    }
+    // vector<Ciphertext> macd_encrypted;
+    // for (int i = 0; i < wma9_encrypted.size(); i++) {
+    //     Ciphertext tmp_macd;
+    //     scheme.sub(tmp_macd, wma_diff_sliced[i], wma9_encrypted[i]);
+    //     macd_encrypted.push_back(tmp_macd);
+    // }
 
-	cout << "MACD Analysis Complete" << endl;
-	cout << "\n";
-	cout << "Data Export Starts" << endl;
-	cout << "\n";
+	// cout << "MACD Analysis Complete" << endl;
+	// cout << "\n";
+	// cout << "Data Export Starts" << endl;
+	// cout << "\n";
 
 	vector<double> wma12;
-    for (int i = 0; i < wma12_encrypted_sliced.size(); i++) {
+    for (int i = 0; i < wma12_encrypted.size(); i++) {
         complex<double> val;
         Ciphertext val_encrypted;
-        val_encrypted = wma12_encrypted_sliced[i];
+        val_encrypted = wma12_encrypted[i];
         val = scheme.decryptSingle(secretKey, val_encrypted);
         wma12.push_back(real(val));
     }
 
-	cout << "wma12 exported" << endl;
+	// cout << "wma12 exported" << endl;
 
-    vector<double> wma26;
-    for (int i = 0; i < wma26_encrypted.size(); i++) {
-        complex<double> val;
-        Ciphertext val_encrypted;
-        val_encrypted = wma26_encrypted[i];
-        val = scheme.decryptSingle(secretKey, val_encrypted);
-        wma26.push_back(real(val));
-    }
+    // vector<double> wma26;
+    // for (int i = 0; i < wma26_encrypted.size(); i++) {
+    //     complex<double> val;
+    //     Ciphertext val_encrypted;
+    //     val_encrypted = wma26_encrypted[i];
+    //     val = scheme.decryptSingle(secretKey, val_encrypted);
+    //     wma26.push_back(real(val));
+    // }
 
-	cout << "wma26 exported" << endl;
+	// cout << "wma26 exported" << endl;
 
-    vector<double> wma_diff;
-    for (int i = 0; i < wma_diff_sliced.size(); i++) {
-        complex<double> val;
-        Ciphertext val_encrypted;
-        val_encrypted = wma_diff_sliced[i];
-        val = scheme.decryptSingle(secretKey, val_encrypted);
-        wma_diff.push_back(real(val));
-    }
+    // vector<double> wma_diff;
+    // for (int i = 0; i < wma_diff_sliced.size(); i++) {
+    //     complex<double> val;
+    //     Ciphertext val_encrypted;
+    //     val_encrypted = wma_diff_sliced[i];
+    //     val = scheme.decryptSingle(secretKey, val_encrypted);
+    //     wma_diff.push_back(real(val));
+    // }
 
-	cout << "wma diff exported" << endl;
+	// cout << "wma diff exported" << endl;
 
     // vector<double> wma9;
     // for (int i = 0; i < wma9_encrypted.size(); i++) {
@@ -314,21 +248,21 @@ int main() {
 
 	// cout << "wma9 exported" << endl;
 
-    vector<double> macd;
-    for (int i = 0; i < macd_encrypted.size(); i++) {
-        complex<double> val;
-        Ciphertext val_encrypted;
-        val_encrypted = macd_encrypted[i];
-        val = scheme.decryptSingle(secretKey, val_encrypted);
-        macd.push_back(real(val));
-    }
+    // vector<double> macd;
+    // for (int i = 0; i < macd_encrypted.size(); i++) {
+    //     complex<double> val;
+    //     Ciphertext val_encrypted;
+    //     val_encrypted = macd_encrypted[i];
+    //     val = scheme.decryptSingle(secretKey, val_encrypted);
+    //     macd.push_back(real(val));
+    // }
 
-	cout << "macd exported" << endl;
+	// cout << "macd exported" << endl;
 
 	printVector(wma12);
-	printVector(wma26);
-	printVector(wma_diff);
-	printVector(macd);
+	// printVector(wma26);
+	// printVector(wma_diff);
+	// printVector(macd);
 
 	// vector<Ciphertext> decisions_encrypted;
     // for (int i = 1; i < macd_encrypted.size(); i++) {
