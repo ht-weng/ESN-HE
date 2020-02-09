@@ -181,9 +181,18 @@ inline vector<double> tanh(const vector<double>& s) {
     return result;
 }
 
+// Write data to csv files for plotting
+inline void exportData(vector<double> vec, string file) {
+    ofstream output_file(file);
+    ostream_iterator<double> output_iterator(output_file, "\n");
+    copy(vec.begin(), vec.end(), output_iterator);
+}
+
 int main() {
 
-    vector<double> prices = csv2vec("apple_prices.csv");
+    int time_max = 200;
+    vector<double> apple_prices = csv2vec("apple_prices.csv");
+    vector<double> prices = slice(apple_prices, 0, 200);
 
     ///////////////////////////////////////////////////////////////
     // EMA
@@ -213,19 +222,10 @@ int main() {
     vector<double> tanh_decisions_ema = tanh(macd_ema);
 
     // write data to csv for plotting
-    ofstream output_file1("macd_ema.csv");
-    ostream_iterator<double> output_iterator1(output_file1, "\n");
-    copy(macd_ema.begin(), macd_ema.end(), output_iterator1);
-
-    ofstream output_file2("decisions_ema.csv");
-    ostream_iterator<double> output_iterator2(output_file2, "\n");
-    copy(decisions_ema.begin(), decisions_ema.end(), output_iterator2);
-
-    // write decisions to csv
-    ofstream output_file3("tanh_decisions_ema.csv");
-    ostream_iterator<double> output_iterator3(output_file3, "\n");
-    copy(tanh_decisions_ema.begin(), tanh_decisions_ema.end(), output_iterator3);
-
+    exportData(macd_ema, "macd_ema.csv");
+    exportData(decisions_ema, "decisions_ema.csv");
+    exportData(tanh_decisions_ema, "tanh_decisions_ema.csv");
+    
     ///////////////////////////////////////////////////////////////
     // WMA
     ///////////////////////////////////////////////////////////////
@@ -243,12 +243,7 @@ int main() {
     }
     
     vector<double> wma9 = wma(wma_diff, 9);
-    vector<double> wma_diff_sliced = slice(wma_diff, 8, wma_diff.size());
-
-    vector<double> macd;
-    for (int i = 0; i < wma9.size(); i++) {
-        macd.push_back(wma_diff_sliced[i]-wma9[i]);
-    }
+    vector<double> wma_diff_sliced = slice(wma_diff, 9, wma_diff.size());
 
     vector<double> macd_wma;
     for (int i = 0; i < wma9.size(); i++) {
@@ -259,18 +254,14 @@ int main() {
     vector<double> tanh_decisions_wma = tanh(macd_wma);
 
     // write data to csv for plotting
-    ofstream output_file4("macd_wma.csv");
-    ostream_iterator<double> output_iterator4(output_file4, "\n");
-    copy(macd_wma.begin(), macd_wma.end(), output_iterator4);
+    exportData(macd_wma, "macd_wma.csv");
+    exportData(decisions_wma, "decisions_wma.csv");
+    exportData(tanh_decisions_wma, "tanh_decisions_wma.csv");
 
-    ofstream output_file5("decisions_wma.csv");
-    ostream_iterator<double> output_iterator5(output_file5, "\n");
-    copy(decisions_wma.begin(), decisions_wma.end(), output_iterator5);
-
-    // write decisions to csv
-    ofstream output_file6("tanh_decisions_wma.csv");
-    ostream_iterator<double> output_iterator6(output_file6, "\n");
-    copy(tanh_decisions_wma.begin(), tanh_decisions_wma.end(), output_iterator6);
+    exportData(wma12_sliced, "wma12.csv");
+    exportData(wma26, "wma26.csv");
+    exportData(wma_diff_sliced, "wma_diff.csv");
+    exportData(wma9, "wma9.csv");
 
     return 0;
 }
