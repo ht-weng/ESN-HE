@@ -106,6 +106,36 @@ inline vector<double> ema(const vector<double>& s, int n) {
     return ema;
 }
 
+inline vector<double> wma(const vector<double>& data, int n) {
+    vector<double> wma;
+    vector<double> weights;
+
+    // Generate a list of weights of the window size
+    for (int i = 0; i < n; i++) {
+        weights.push_back(2.0*(i+1.0)/(n*(n+1.0)));
+    }
+
+    // Multiply the corresponding Ciphertext and weight in a window and sum the results up 
+    for (int i = 0; i < data.size()-n; i++) {
+        vector<double> data_sliced;
+        vector<double> window;
+
+        // Get the data in the moving window
+        data_sliced = slice(data, i, i+n);
+
+        for (int j = 0; j < n; j++) {
+            double tmp = data_sliced[j];
+            double tmp_weight = weights[j];
+            window.push_back(tmp*tmp_weight);
+        }
+
+        // Sum the multiplication results up to get the weighted moving average
+        double res = sum(window);
+        wma.push_back(res);
+    }
+    return wma;
+}
+
 inline vector<double> decision(const vector<double>& s) {
     vector<double> d;
     d.push_back(0);
@@ -155,6 +185,10 @@ int main() {
 
     vector<double> prices = csv2vec("apple_prices.csv");
 
+    ///////////////////////////////////////////////////////////////
+    // EMA
+    ///////////////////////////////////////////////////////////////
+    
     vector<double> ema12 = ema(prices, 12);
     vector<double> ema26 = ema(prices, 26);
 
@@ -170,27 +204,73 @@ int main() {
     vector<double> ema9 = ema(ema_diff, 9);
     vector<double> ema_diff_sliced = slice(ema_diff, 8, ema_diff.size());
 
-    vector<double> macd;
+    vector<double> macd_ema;
     for (int i = 0; i < ema9.size(); i++) {
-        macd.push_back(ema_diff_sliced[i]-ema9[i]);
+        macd_ema.push_back(ema_diff_sliced[i]-ema9[i]);
     }
 
-    vector<double> decisions = decision(macd);
-    vector<double> tanh_decisions = tanh(macd);
+    vector<double> decisions_ema = decision(macd_ema);
+    vector<double> tanh_decisions_ema = tanh(macd_ema);
 
     // write data to csv for plotting
-    ofstream output_file1("macd.csv");
+    ofstream output_file1("macd_ema.csv");
     ostream_iterator<double> output_iterator1(output_file1, "\n");
-    copy(macd.begin(), macd.end(), output_iterator1);
+    copy(macd_ema.begin(), macd_ema.end(), output_iterator1);
 
-    ofstream output_file2("decisions.csv");
+    ofstream output_file2("decisions_ema.csv");
     ostream_iterator<double> output_iterator2(output_file2, "\n");
-    copy(decisions.begin(), decisions.end(), output_iterator2);
+    copy(decisions_ema.begin(), decisions_ema.end(), output_iterator2);
 
     // write decisions to csv
-    ofstream output_file3("tanh_decisions.csv");
+    ofstream output_file3("tanh_decisions_ema.csv");
     ostream_iterator<double> output_iterator3(output_file3, "\n");
-    copy(tanh_decisions.begin(), tanh_decisions.end(), output_iterator3);
+    copy(tanh_decisions_ema.begin(), tanh_decisions_ema.end(), output_iterator3);
+
+    ///////////////////////////////////////////////////////////////
+    // WMA
+    ///////////////////////////////////////////////////////////////
+
+    vector<double> wma12 = wma(prices, 12);
+    vector<double> wma26 = wma(prices, 26);
+
+    // slice wma12 to make sure its size matches the size of wma26
+    vector<double> wma12_sliced = slice(wma12, 14, wma12.size());
+
+    // calculate macd
+    vector<double> wma_diff;
+    for (int i = 0; i < wma26.size(); i++) {
+        wma_diff.push_back(wma12_sliced[i]-wma26[i]);
+    }
+    
+    vector<double> wma9 = wma(wma_diff, 9);
+    vector<double> wma_diff_sliced = slice(wma_diff, 8, wma_diff.size());
+
+    vector<double> macd;
+    for (int i = 0; i < wma9.size(); i++) {
+        macd.push_back(wma_diff_sliced[i]-wma9[i]);
+    }
+
+    vector<double> macd_wma;
+    for (int i = 0; i < wma9.size(); i++) {
+        macd_wma.push_back(wma_diff_sliced[i]-wma9[i]);
+    }
+
+    vector<double> decisions_wma = decision(macd_wma);
+    vector<double> tanh_decisions_wma = tanh(macd_wma);
+
+    // write data to csv for plotting
+    ofstream output_file4("macd_wma.csv");
+    ostream_iterator<double> output_iterator4(output_file4, "\n");
+    copy(macd_wma.begin(), macd_wma.end(), output_iterator4);
+
+    ofstream output_file5("decisions_wma.csv");
+    ostream_iterator<double> output_iterator5(output_file5, "\n");
+    copy(decisions_wma.begin(), decisions_wma.end(), output_iterator5);
+
+    // write decisions to csv
+    ofstream output_file6("tanh_decisions_wma.csv");
+    ostream_iterator<double> output_iterator6(output_file6, "\n");
+    copy(tanh_decisions_wma.begin(), tanh_decisions_wma.end(), output_iterator6);
 
     return 0;
 }
